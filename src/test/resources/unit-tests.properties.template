@@ -1,9 +1,0 @@
-ConsumerCase.baseDir=@BUILD_DIR@/examples/consumers
-ServiceCase.baseDir=@BUILD_DIR@/examples/services
-ProducerCase.baseDir=@BUILD_DIR@/examples/producers
-SampleConfigCase.baseDir=@BUILD_DIR@/examples
-JmsConsumerExamples.baseDir=@BUILD_DIR@/examples/consumers
-JmsProducerExamples.baseDir=@BUILD_DIR@/examples/producers
-
-WmqNativeConsumerExamples.baseDir=@BUILD_DIR@/examples/consumers
-WmqNativeProducerExamples.baseDir=@BUILD_DIR@/examples/producers
