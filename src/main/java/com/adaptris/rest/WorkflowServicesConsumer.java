@@ -18,6 +18,8 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   protected abstract StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener);
   
   protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException;
+  
+  public abstract void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException;
 
   @Override
   public void prepare() throws CoreException {
@@ -60,5 +62,5 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   public void setMessageListener(AdaptrisMessageListener messageListener) {
     this.messageListener = messageListener;
   }
-
+  
 }

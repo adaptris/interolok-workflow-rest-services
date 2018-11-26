@@ -1,6 +1,7 @@
 package com.adaptris.rest;
 
 import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.core.CoreException;
 import com.adaptris.interlok.client.MessageTarget;
 
 public class JettyConsumerWorkflowTargetTranslator implements WorkflowTargetTranslator {
@@ -13,7 +14,7 @@ public class JettyConsumerWorkflowTargetTranslator implements WorkflowTargetTran
   private static final String PATH_KEY = "jettyURI";
 
   @Override
-  public MessageTarget translateTarget(AdaptrisMessage message) {
+  public MessageTarget translateTarget(AdaptrisMessage message) throws CoreException {
     String metadataValue = message.getMetadataValue(PATH_KEY);
     if(metadataValue ==  null)
       return null;
@@ -26,8 +27,11 @@ public class JettyConsumerWorkflowTargetTranslator implements WorkflowTargetTran
             .withWorkflow(pathItems[4]);
         
         return result;
-      } else
+      } else if(pathItems.length == 2) { // request is
         return null;
+      } else 
+        throw new CoreException("Could not determine your target workflow.");
+        
     }
   }
 

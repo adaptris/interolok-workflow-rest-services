@@ -1,21 +1,25 @@
 package com.adaptris.rest;
 
+import java.io.InputStream;
 import java.util.Properties;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
+import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.DefaultSerializableMessageTranslator;
 import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.LifecycleHelper;
-import com.adaptris.interlok.InterlokException;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
+import com.adaptris.util.stream.StreamUtil;
 
 public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
   
   private static final Long DEFAULT_INITIAL_JETTY_CONTEXT_WAIT = (30l*1000l);
+  
+  private static final String DEFINITION_FILE = "META-INF/workflow-services.yaml";
   
   private transient WorkflowServicesConsumer consumer;
   
@@ -36,19 +40,26 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message) {
-    log.debug(message.toString());
+    log.debug("Processing incoming message {}", message.getUniqueId());
     
-    MessageTarget translateTarget = this.getTargetTranslator().translateTarget(message);
     try {
-      SerializableMessage processedMessage = this.getJmxClient().process(translateTarget, this.getMessageTranslator().translate(message));
+      MessageTarget translateTarget = this.getTargetTranslator().translateTarget(message);
+      if(translateTarget != null) {
+        SerializableMessage processedMessage = this.getJmxClient().process(translateTarget, this.getMessageTranslator().translate(message));
       
-      AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
-      this.getConsumer().doResponse(message, responseMessage);
-      
-    } catch (CoreException e) {
+        AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
+        this.getConsumer().doResponse(message, responseMessage);
+      } else { // we'll just return the definition.
+        InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(DEFINITION_FILE);
+        AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
+        StreamUtil.copyAndClose(resourceAsStream, responseMessage.getOutputStream()); 
+        this.getConsumer().doResponse(message, responseMessage);
+      }
+    } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
-    } catch (InterlokException e) {
-      log.error("Unable to inject REST message into the workflow.", e);
+      try {
+        this.getConsumer().doErrorResponse(message, e);
+      } catch (Exception silent) {}
     }
   }
   
