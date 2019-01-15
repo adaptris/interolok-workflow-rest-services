@@ -1,5 +1,6 @@
 package com.adaptris.rest;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
@@ -50,9 +51,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
         AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
         this.getConsumer().doResponse(message, responseMessage);
       } else { // we'll just return the definition.
-        InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(DEFINITION_FILE);
-        AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
-        StreamUtil.copyAndClose(resourceAsStream, responseMessage.getOutputStream()); 
+        AdaptrisMessage responseMessage = generateDefinitionFile(); 
         this.getConsumer().doResponse(message, responseMessage);
       }
     } catch (Exception e) {
@@ -61,6 +60,13 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
         this.getConsumer().doErrorResponse(message, e);
       } catch (Exception silent) {}
     }
+  }
+
+  private AdaptrisMessage generateDefinitionFile() throws IOException {
+    InputStream resourceAsStream = this.getClass().getClassLoader().getResourceAsStream(DEFINITION_FILE);
+    AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
+    StreamUtil.copyAndClose(resourceAsStream, responseMessage.getOutputStream());
+    return responseMessage;
   }
   
   @Override
