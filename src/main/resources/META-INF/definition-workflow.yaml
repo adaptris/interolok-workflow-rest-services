@@ -1,33 +1,25 @@
   /workflow-services/{adapter}/{channel}/{id}:
     post:
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      - text/xml
-      - text/html
-      parameters:
-      - name: body
-      in: body
-      required: true
-      schema:
-      type: object
-      properties:
-      testapi:
-      type: object
-      properties:
-      adapter:
-      type: string
-      example: MyInterlokInstance
-      channel:
-      type: string
-      example: Channel-0000000
-      id:
-      type: string
-      example: Workflow-000000
-      testapiBody:
-      type: object
-      properties:
-      type:
-      type: object
-      properties:
+      description: Post your message directly into your Interlok workflow.
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+            examples:
+              '0':
+                value: MyMessageContent
+      responses:
+        '200':
+          description: The response content after your workflow has processed the incoming message.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                '0':
+                  value: MyMessageResponseContent
+      servers:
+        - url: 'http://localhost:8080'
+    servers:
+      - url: 'http://localhost:8080'
