@@ -1,0 +1,33 @@
+  /workflow-services/{adapter}/{channel}/{id}:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/xml
+      - text/html
+      parameters:
+      - name: body
+      in: body
+      required: true
+      schema:
+      type: object
+      properties:
+      testapi:
+      type: object
+      properties:
+      adapter:
+      type: string
+      example: MyInterlokInstance
+      channel:
+      type: string
+      example: Channel-0000000
+      id:
+      type: string
+      example: Workflow-000000
+      testapiBody:
+      type: object
+      properties:
+      type:
+      type: object
+      properties:

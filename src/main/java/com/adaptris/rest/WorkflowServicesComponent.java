@@ -2,7 +2,6 @@ package com.adaptris.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import java.util.*;
 
 import com.adaptris.core.AdaptrisMessage;
@@ -16,15 +15,22 @@ import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
-import com.adaptris.util.stream.StreamUtil;
 
 import javax.management.*;
+
+import org.apache.commons.io.IOUtils;
 
 public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
   
   private static final Long DEFAULT_INITIAL_JETTY_CONTEXT_WAIT = (30l*1000l);
+    
+  private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
   
-  private static final String DEFINITION_FILE = "META-INF/workflow-services.yaml";
+  private static final String DEF_HEADER = "META-INF/definition-header.yaml";
+  
+  private static final String DEF_WORKFLOW = "META-INF/definition-workflow.yaml";
+  
+  private static final String WORKFLOW_MANAGER = "com.adaptris.core.runtime.WorkflowManager";
   
   private transient WorkflowServicesConsumer consumer;
   
@@ -54,7 +60,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
       
         AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
         this.getConsumer().doResponse(message, responseMessage);
-        //Segment for Co-Din
+
       } else { // we'll just return the definition.
         AdaptrisMessage responseMessage = generateDefinitionFile();
         this.getConsumer().doResponse(message, responseMessage);
@@ -66,48 +72,34 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
       } catch (Exception silent) {}
     }
   }
-  //Segment for Co-Din
   private AdaptrisMessage generateDefinitionFile() throws IOException, MalformedObjectNameException {
-    List<String> definition = new ArrayList<String>();
-//    String definition = null;
-    // build the string
-    // Selects
-    String objectName ="*com.adaptris:type=Workflow,*";
-
-    MBeanServer interlokMBeanServer = JmxHelper.findMBeanServer();
-//    QueryExp exp = Query.eq(Query.attr("type"), Query.value("Workflow"));
-    Set<ObjectInstance> objectInstanceSet = interlokMBeanServer.queryMBeans(new ObjectName(objectName), null);
-    Iterator<ObjectInstance> iterator = objectInstanceSet.iterator();
-    while (iterator.hasNext()) {
-      ObjectInstance instance = iterator.next();
-      if (instance.getClassName() == "com.adaptris.core.runtime.WorkflowManager") {
-
-        System.out.println("****************************************");
-        System.out.println("Class Name:t" + instance.getClassName());
-        System.out.println("Object Name:t" + instance.getObjectName());
-        System.out.println("****************************************");
-
-//        definition = instance.getObjectName().getKeyPropertyList().toString();
-
-                definition.add(instance.getObjectName().getKeyPropertyListString());
-
-
-      }
-
-    }
+    StringBuilder definition = new StringBuilder();
 
     AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
+    MBeanServer interlokMBeanServer = JmxHelper.findMBeanServer();
+    Set<ObjectInstance> objectInstanceSet = interlokMBeanServer.queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
+    Iterator<ObjectInstance> iterator = objectInstanceSet.iterator();
+    definition.append(readResourceAsString(DEF_HEADER, responseMessage.getContentEncoding()));
+    while (iterator.hasNext()) {
+      ObjectInstance instance = iterator.next();
+      if (instance.getClassName().equals(WORKFLOW_MANAGER)) {
 
-//    Line below for testing filter as string, one channel and workflow
-//    responseMessage.setContent(definition, responseMessage.getContentEncoding());
-
-//    Line below for testing final solution with multiple channels and workflows
-    responseMessage.setContent((Arrays.toString(definition.toArray())), responseMessage.getContentEncoding());
-    System.out.println("****************************************");
-    System.out.println(definition);
-    System.out.println("****************************************");
-
+        definition.append("\n");
+        definition.append(personalizedWorkflowDef(readResourceAsString(DEF_WORKFLOW, responseMessage.getContentEncoding()), instance.getObjectName()));
+      }
+    }
+    
+    responseMessage.setContent(definition.toString(), responseMessage.getContentEncoding());
     return responseMessage;
+  }
+  
+  private String readResourceAsString(String resourceName, String contentEncoding) throws IOException {
+    InputStream resourceBody = this.getClass().getClassLoader().getResourceAsStream(resourceName);
+    return IOUtils.toString(resourceBody, contentEncoding);
+  }
+  
+  private String personalizedWorkflowDef(String rawDef, ObjectName objectName) {
+   return null;
   }
   
   @Override
