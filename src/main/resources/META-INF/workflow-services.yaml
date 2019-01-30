@@ -5,126 +5,70 @@ info:
   version: "1.0"
 servers:
   - url: 'http://localhost:8080'
-  paths:
-    /workflow-services/{adapter}/{channel}/{id}:
+paths:
+  /workflow-services/MyInterlokInstance/JMS-JMS/eager-albattani:
     post:
       consumes:
-        - application/json
-        produces:
-          - application/json
-          - text/xml
-          - text/html
-        parameters:
-          - name: body
-            in: body
-            required: true
-            schema:
-              # Body schema with atomic property examples
-              type: object
-              properties:
-                testapi:
-                  type: object
-                  properties:
-                    adapter:
-                      type: string
-                      example: MyInterlokInstance
-                    channel:
-                      type: string
-                      example: Channel-0000000
-                    id:
-                      type: string
-                      example: Workflow-000000
-                testapiBody:
-                  type: object
-                  properties:
-                    type:
-                      type: object
-                      properties:
-                      
-    /workflow-services/{adapter}/{channel}/{id}:
+      - application/json
+      produces:
+      - application/json
+      - text/xml
+      - text/html
+      parameters:
+      - name: body
+      in: body
+      required: true
+      schema:
+      type: object
+      properties:
+      testapi:
+      type: object
+      properties:
+      adapter:
+      type: string
+      example: MyInterlokInstance
+      channel:
+      type: string
+      example: Channel-0000000
+      id:
+      type: string
+      example: Workflow-000000
+      testapiBody:
+      type: object
+      properties:
+      type:
+      type: object
+      properties:
+  /workflow-services/MyInterlokInstance/FS-JMS/suspicious-noyce:
     post:
       consumes:
-        - application/json
-        produces:
-          - application/json
-          - text/xml
-          - text/html
-        parameters:
-          - name: body
-            in: body
-            required: true
-            schema:
-              # Body schema with atomic property examples
-              type: object
-              properties:
-                testapi:
-                  type: object
-                  properties:
-                    adapter:
-                      type: string
-                      example: MyInterlokInstance
-                    channel:
-                      type: string
-                      example: Channel-0000000
-                    id:
-                      type: string
-                      example: Workflow-000000
-                testapiBody:
-                  type: object
-                  properties:
-                    type:
-                      type: object
-                      properties:
-
-
-#      summary: Returns Adapter Information
-#        responses:
-#          "200":
-#            description:  HTML
-
-#      responses:
-#        '200':
-#          description: A JSON object containing Channels and workflows
-#          content:
-#            application/json:
-#              schema:
-#                type: string
-#                 examples:
-#                   '0':
-#                   value: body
-
-
-
-
-#******************************************************************************************
-
-#
-
-
-
-#************************************************************************************************************************
-#
-#
-#    paths:
-#      /workflow-services/{adapter}/channel{unique-id}/id{unique-id}:
-#        post:
-#          description: Inject your data directly into any one of your Interlok Workflows.  Simply change the url to your Interlok host, set headers to be mapped into Interlok metadata and POST your body data.
-#          requestBody:
-#            application/json:
-#            content:
-#              text/plain:
-#                schema:
-#                  type: string
-#                examples:
-#                  '0':
-#                    value: Some body
-#          responses:
-#            '200':
-#              description: The resulting message after being processed by your target Interlok workflow.
-#              content:
-#                text/plain:
-#                  schema:
-#                    type: string
-#                  examples:
-#                    '0':
-#                      value: Some body
+      - application/json
+      produces:
+      - application/json
+      - text/xml
+      - text/html
+      parameters:
+      - name: body
+      in: body
+      required: true
+      schema:
+      type: object
+      properties:
+      testapi:
+      type: object
+      properties:
+      adapter:
+      type: string
+      example: MyInterlokInstance
+      channel:
+      type: string
+      example: Channel-0000000
+      id:
+      type: string
+      example: Workflow-000000
+      testapiBody:
+      type: object
+      properties:
+      type:
+      type: object
+      properties:

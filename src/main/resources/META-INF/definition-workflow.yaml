@@ -20,6 +20,6 @@
                 '0':
                   value: MyMessageResponseContent
       servers:
-        - url: 'http://localhost:8080'
+        - url: 'http://{host}'
     servers:
-      - url: 'http://localhost:8080'
+      - url: 'http://{host}'

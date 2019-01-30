@@ -32,6 +32,22 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   
   private static final String WORKFLOW_MANAGER = "com.adaptris.core.runtime.WorkflowManager";
   
+  private static final String HOST_PLACEHOLDER = "{host}";
+  
+  private static final String ADAPTER_PLACEHOLDER = "{adapter}";
+  
+  private static final String CHANNEL_PLACEHOLDER = "{channel}";
+  
+  private static final String WORKFLOW_PLACEHOLDER = "{id}";
+  
+  private static final String OBJECT_PROPERTY_ADAPTER = "adapter";
+  
+  private static final String OBJECT_PROPERTY_CHANNEL = "channel";
+  
+  private static final String OBJECT_PROPERTY_WORKFLOW = "id";
+  
+  private static final String HTTP_HEADER_HOST = "http.header.Host";
+  
   private transient WorkflowServicesConsumer consumer;
   
   private transient DefaultSerializableMessageTranslator messageTranslator;
@@ -62,7 +78,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
         this.getConsumer().doResponse(message, responseMessage);
 
       } else { // we'll just return the definition.
-        AdaptrisMessage responseMessage = generateDefinitionFile();
+        AdaptrisMessage responseMessage = generateDefinitionFile(message.getMetadataValue(HTTP_HEADER_HOST));
         this.getConsumer().doResponse(message, responseMessage);
       }
     } catch (Exception e) {
@@ -72,7 +88,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
       } catch (Exception silent) {}
     }
   }
-  private AdaptrisMessage generateDefinitionFile() throws IOException, MalformedObjectNameException {
+  private AdaptrisMessage generateDefinitionFile(String host) throws IOException, MalformedObjectNameException {
     StringBuilder definition = new StringBuilder();
 
     AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
@@ -89,7 +105,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
       }
     }
     
-    responseMessage.setContent(definition.toString(), responseMessage.getContentEncoding());
+    responseMessage.setContent(definition.toString().replace(HOST_PLACEHOLDER, host), responseMessage.getContentEncoding());
     return responseMessage;
   }
   
@@ -99,7 +115,9 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   }
   
   private String personalizedWorkflowDef(String rawDef, ObjectName objectName) {
-   return null;
+    return rawDef.replace(ADAPTER_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_ADAPTER))
+        .replace(CHANNEL_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_CHANNEL))
+        .replace(WORKFLOW_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_WORKFLOW));
   }
   
   @Override
