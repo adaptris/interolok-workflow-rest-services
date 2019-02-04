@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.*;
 
 import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.core.AdaptrisMessageFactory;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
@@ -58,11 +59,16 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   
   private transient Long initialJettyContextWaitMs;
   
+  private transient MBeanServer interlokMBeanServer;
+  
+  private transient AdaptrisMessageFactory messageFactory;
+  
   public WorkflowServicesComponent() {
     this.setConsumer(new HttpRestWorkflowServicesConsumer());
     this.setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
     this.setJmxClient(new InterlokJmxClient());
     this.setMessageTranslator(new DefaultSerializableMessageTranslator());
+    this.setMessageFactory(DefaultMessageFactory.getDefaultInstance());
   }
 
   @Override
@@ -91,9 +97,12 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   private AdaptrisMessage generateDefinitionFile(String host) throws IOException, MalformedObjectNameException {
     StringBuilder definition = new StringBuilder();
 
-    AdaptrisMessage responseMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
-    MBeanServer interlokMBeanServer = JmxHelper.findMBeanServer();
-    Set<ObjectInstance> objectInstanceSet = interlokMBeanServer.queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
+    AdaptrisMessage responseMessage = this.getMessageFactory().newMessage();
+    
+    if(this.getInterlokMBeanServer() == null)
+      this.setInterlokMBeanServer(JmxHelper.findMBeanServer());
+
+    Set<ObjectInstance> objectInstanceSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
     Iterator<ObjectInstance> iterator = objectInstanceSet.iterator();
     definition.append(readResourceAsString(DEF_HEADER, responseMessage.getContentEncoding()));
     while (iterator.hasNext()) {
@@ -204,6 +213,22 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   public void setInitialJettyContextWaitMs(Long initialJettyContextWaitMs) {
     this.initialJettyContextWaitMs = initialJettyContextWaitMs;
+  }
+
+  public MBeanServer getInterlokMBeanServer() {
+    return interlokMBeanServer;
+  }
+
+  public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
+    this.interlokMBeanServer = interlokMBeanServer;
+  }
+
+  public AdaptrisMessageFactory getMessageFactory() {
+    return messageFactory;
+  }
+
+  public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
+    this.messageFactory = messageFactory;
   }
 
 }
