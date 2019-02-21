@@ -1,0 +1,35 @@
+language: java
+sudo: required
+dist: trusty
+
+before_install:
+  - sudo service haveged start
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+jdk:
+  - openjdk8
+
+addons:
+  apt:
+    packages:
+      - haveged
+      - bash-builtins
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  apt: true
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
+notifications:
+  email: false
+
+branches:
+  only:
+    - develop

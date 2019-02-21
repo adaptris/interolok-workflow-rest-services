@@ -1,0 +1,25 @@
+  /workflow-services/{adapter}/{channel}/{id}:
+    post:
+      description: Post your message directly into your Interlok workflow.
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+            examples:
+              '0':
+                value: MyMessageContent
+      responses:
+        '200':
+          description: The response content after your workflow has processed the incoming message.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                '0':
+                  value: MyMessageResponseContent
+      servers:
+        - url: 'http://{host}'
+    servers:
+      - url: 'http://{host}'

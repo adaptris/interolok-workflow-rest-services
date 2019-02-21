@@ -20,6 +20,12 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   
   private static final String PATH = "/workflow-services/*";
   
+  private static final String ACCEPTED_FILTER = "POST,GET";
+  
+  private static final String OK_200 = "200";
+  
+  private static final String ERROR_400 = "400";
+  
   private static final String HEADER_PREFIX = "http.header.";
   
   private static final String PARAMETER_PREFIX = "http.param.";
@@ -34,14 +40,14 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
     MetadataResponseHeaderProvider metadataResponseHeaderProvider = new MetadataResponseHeaderProvider();
     metadataResponseHeaderProvider.setFilter(new NoOpMetadataFilter());
     
-    responseService = new JettyResponseService();
-    responseService.setResponseHeaderProvider(metadataResponseHeaderProvider);
+    this.setResponseService(new JettyResponseService());
+    this.getResponseService().setResponseHeaderProvider(metadataResponseHeaderProvider);
     
     EmbeddedConnection jettyConnection = new EmbeddedConnection();
     JettyMessageConsumer messageConsumer = new JettyMessageConsumer();
     
     ConfiguredConsumeDestination configuredConsumeDestination = new ConfiguredConsumeDestination(PATH);
-    configuredConsumeDestination.setFilterExpression("POST,GET");
+    configuredConsumeDestination.setFilterExpression(ACCEPTED_FILTER);
     
     messageConsumer.setDestination(configuredConsumeDestination);
     messageConsumer.setHeaderHandler(new MetadataHeaderHandler(HEADER_PREFIX));
@@ -54,15 +60,23 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   @Override
   protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException {
     processedMessage.addObjectHeader(JettyConstants.JETTY_WRAPPER, originalMessage.getObjectHeaders().get(JettyConstants.JETTY_WRAPPER));
-    responseService.setHttpStatus("200");
-    responseService.doService(processedMessage);
+    this.getResponseService().setHttpStatus(OK_200);
+    this.getResponseService().doService(processedMessage);
   }
 
   @Override
   public void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException {
     message.setContent(ExceptionUtils.getStackTrace(e), message.getContentEncoding());
-    responseService.setHttpStatus("400"); // bad request.
-    responseService.doService(message);
+    this.getResponseService().setHttpStatus(ERROR_400); // bad request.
+    this.getResponseService().doService(message);
+  }
+
+  public JettyResponseService getResponseService() {
+    return responseService;
+  }
+
+  public void setResponseService(JettyResponseService responseService) {
+    this.responseService = responseService;
   }
 
 }
