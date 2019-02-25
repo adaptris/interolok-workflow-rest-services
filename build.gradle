@@ -7,7 +7,8 @@ plugins {
   id 'maven-publish'
   id 'jacoco'
   // Manage optional dependencies in maven pom.
-  id 'nebula.optional-base' version '3.3.0'
+  id 'nebula.optional-base' version '4.0.1'
+  id 'com.github.spotbugs' version '1.6.10'
 }
 
 ext {
@@ -111,7 +112,7 @@ configurations.all {
 dependencies {
   compile ("com.adaptris:interlok-core:$interlokCoreVersion") { changing= true}
   compile ("com.adaptris:interlok-common:$interlokCoreVersion") { changing= true}
-  
+
   compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") { changing= true}
   compile ("com.adaptris:interlok-client:$interlokCoreVersion") { changing= true}
 
@@ -286,6 +287,25 @@ publishing {
   }
 }
 
+spotbugs {
+  // showProgress = "true"
+  effort = "max"
+  // Ignore failures?
+  // ignoreFailures = false
+
+  // We only care about "high priority" issues...
+  reportLevel = "high"
+}
+
+// disable spotbugsTests which checks our test code..
+spotbugsTest.enabled = false
+
+tasks.withType(com.github.spotbugs.SpotBugsTask) {
+  reports {
+    xml.enabled = false
+    html.enabled = true
+  }
+}
 
 check.dependsOn jacocoTestReport
 processTestResources.dependsOn copyUnitTestProperties
