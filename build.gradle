@@ -29,9 +29,6 @@ ext {
   componentName='Interlok Workflow REST'
   organizationName = "Adaptris Ltd"
   organizationUrl = "http://interlok.adaptris.net"
-  slf4jVersion = '1.7.25'
-  log4j2Version = '2.8.1'
-  jmockVersion = '2.8.4'
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -272,7 +269,6 @@ publishing {
         def properties = asNode().appendNode("properties")
         properties.appendNode("target", "3.8.0+")
         properties.appendNode("tags", "rest")
-        properties.appendNode("license", "true")
       }
     }
   }
