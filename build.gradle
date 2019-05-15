@@ -81,7 +81,7 @@ repositories {
       url "$nexusBaseUrl/content/groups/private"
     }
   maven { url "$nexusBaseUrl/content/groups/public" }
-  maven { url "$nexusBaseUrl/content/repositories/snapshots" }
+  maven { url "$nexusBaseUrl/content/groups/interlok" }
 }
 
 
