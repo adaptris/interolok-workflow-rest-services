@@ -27,6 +27,10 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
     
   private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
   
+  private static final String PATH = "/workflow-services/*";
+  
+  private static final String ACCEPTED_FILTER = "POST,GET";
+  
   private static final String DEF_HEADER = "META-INF/definition-header.yaml";
   
   private static final String DEF_WORKFLOW = "META-INF/definition-workflow.yaml";
@@ -131,6 +135,8 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   
   @Override
   public void init(Properties config) throws Exception {
+    this.getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+    this.getConsumer().setConsumedUrlPath(PATH);
     this.getConsumer().setMessageListener(this);
     this.getConsumer().prepare();
     LifecycleHelper.init(getConsumer());
