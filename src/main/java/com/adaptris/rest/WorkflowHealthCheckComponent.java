@@ -69,7 +69,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
      * JMX of course.  If you start an instance of Interlok that has at least one configured workflow, then open up
      * JConsole, connect to the instance and you'll be able to see all of the MBeans available.  Shout if you need a quick guide around this bit.
      * 
-     * You can use 
+     * You can use this.getInterlokMBeanServer(), to get access to the MBeans.
      * 
      * How do you send your response back to the user?
      * Simply write your response to the message payload and then call this method;
@@ -80,7 +80,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
      * this.getConsumer().doErrorResponse(message, new Exception("Your channel doesn't exist"));
      * 
      */
-    JmxHelper.findMBeanServer();
   }
   
   @Override
