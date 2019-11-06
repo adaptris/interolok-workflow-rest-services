@@ -24,9 +24,9 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	private static final String CHANNEL_OBJ_NAME = "*com.adaptris:type=Channel,*";
 
 	private static final String WORKFLOW_OBJ_NAME = "*com.adaptris:type=Workflow,*";
-	
+
 	private static final String CHANNEL_OBJ_TYPE = "com.adaptris:type=Channel,";
-	
+
 	private static final String WORKFLOW_OBJ_TYPE = "com.adaptris:type=Workflow,";
 
 	private static final String ACCEPTED_FILTER = "GET";
@@ -34,7 +34,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	private static final String PARENT_ID = "ParentId";
 
 	private static final String UNIQUE_ID = "UniqueId";
-	
+
 	private static final String CHILDREN_ATTRIBUTE = "Children";
 
 	private static final String COMPONENT_STATE = "ComponentState";
@@ -120,11 +120,11 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		String[] pathItem = pathValue.split("/");
 		return pathItem;
 	}
-	
+
 	private ObjectName channelObjectName(AdaptrisMessage message) throws OperationsException {
 		return new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + healthPath(message)[2] + ",id=" + healthPath(message)[3]);
 	}
-	
+
 	private ObjectName workflowObjectName(AdaptrisMessage message) throws OperationsException {
 		return new ObjectName(WORKFLOW_OBJ_TYPE + "adapter=" + healthPath(message)[2] + ",channel=" + healthPath(message)[3] + ",id=" + healthPath(message)[4]);
 	}
@@ -141,7 +141,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		Object workflowObject = this.getInterlokMBeanServer().getAttribute(workflowObjectName(message), attribute);		
 		return workflowObject ;
 	}
-	
+
 	private Object channelInstanceAttribute(AdaptrisMessage message, String attribute) throws OperationsException, ReflectionException, MBeanException {
 		Object channelObject = this.getInterlokMBeanServer().getAttribute(channelObjectName(message), attribute);		
 		return channelObject ;
@@ -171,66 +171,87 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 
 	private String workflowHealth(AdaptrisMessage message) throws ReflectionException, MBeanException, OperationsException {
+		try {
 		String workflowId = ("\t\tWorkflow: " + workflowInstanceAttribute(message, UNIQUE_ID) + "\n").toString();
 		String workflowState = ("\t\tWorkflow State: " + workflowInstanceAttribute(message, COMPONENT_STATE) + "\n").toString();
 		String invalidWorkflowId = "The workflow id provided is invalid.\n";
 
-	    if((healthPath(message).length == 5) && (channelInstanceAttribute(message, CHILDREN_ATTRIBUTE).toString().contains(workflowObjectName(message).toString()))) {		
+		if((healthPath(message).length == 5) && (channelInstanceAttribute(message, CHILDREN_ATTRIBUTE).toString().contains(workflowObjectName(message).toString()))) {		
 			return workflowId + workflowState;
 		}else {
 			return invalidWorkflowId;
 		}
+		}catch(InstanceNotFoundException e){
+			String invalidWorkflowId = "The workflow id provided is invalid.\n";
+			log.warn(e.toString());
+			return invalidWorkflowId;
+		}
+
 	}
-	
-	
-	private String channelHealth(AdaptrisMessage message) throws ReflectionException, MBeanException, OperationsException {
+
+
+	private String channelHealth(AdaptrisMessage message) throws OperationsException, ReflectionException, MBeanException {
+		try {
+			
+		String messageChannelId = channelInstanceAttribute(message, UNIQUE_ID).toString();
+		String[] channelIdPassed = healthPath(message);
 		String channelId = ("\tChannel: " + channelInstanceAttribute(message, UNIQUE_ID) + "\n").toString();
 		String channelState = ("\tChannel State: " + channelInstanceAttribute(message, COMPONENT_STATE) + "\n").toString();
 		String invalidChannelId = "The channel id provided is invalid.\n";
-
-	    if((healthPath(message).length <= 5) && (healthPath(message).length >= 4)) {
+		if((healthPath(message).length <= 5) && (Arrays.toString(channelIdPassed).contains(messageChannelId))) {
 			return channelId + channelState;
 		}else {
 			return invalidChannelId;
 		}
+		}catch(InstanceNotFoundException e){
+			String invalidChannelId = "The channel id provided is invalid.\n";
+			log.warn(e.toString());
+			return invalidChannelId;
+		}
+		
 	}
 
-	
+
 	private void adapterHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
 
 		Set<ObjectInstance> channelObjInstSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(CHANNEL_OBJ_NAME), null);
 		Iterator<ObjectInstance> channelIterator = channelObjInstSet.iterator();
 		StringBuilder builder = new StringBuilder();
-
-		if(childFreeAdapter()) {
+		if(adapterHealth(message).equalsIgnoreCase("The adapter id provided is invalid.\n")) {
 			builder.append(adapterHealth(message));
-			builder.append("\nNo channels or workflows were found for this adapter.");
-			message.setContent(builder.toString(), message.getContentEncoding());
-			this.getConsumer().doResponse(message, message);
 		}
 		else {
-			while (channelIterator.hasNext()) {
-				Set<ObjectInstance> workflowObjInstSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
-				Iterator<ObjectInstance> workflowIterator = workflowObjInstSet.iterator();
-				ObjectInstance channelInstance = channelIterator.next();
-				if (!childFreeChannel(message)) {
-					builder.append(adapterHealth(message));
-					builder.append("\tChannel: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
-					builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
-					while (workflowIterator.hasNext()) {
-						ObjectInstance workflowInstance = workflowIterator.next();
-						if (!this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString().equalsIgnoreCase(this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), PARENT_ID).toString())) continue;
-						builder.append("\t\tWorkflow: " + this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
-						builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
+			if(childFreeAdapter()) {
+				builder.append(adapterHealth(message));
+				builder.append("\nNo channels or workflows were found for this adapter.");
+				message.setContent(builder.toString(), message.getContentEncoding());
+				this.getConsumer().doResponse(message, message);
+			}
+			else {
+				while (channelIterator.hasNext()) {
+					Set<ObjectInstance> workflowObjInstSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
+					Iterator<ObjectInstance> workflowIterator = workflowObjInstSet.iterator();
+					ObjectInstance channelInstance = channelIterator.next();
+					if (!childFreeAdapter()) {
+						builder.append(adapterHealth(message));
+						builder.append("\tChannel: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
+						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
+						while (workflowIterator.hasNext()) {
+							ObjectInstance workflowInstance = workflowIterator.next();
+							if (!this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString().equalsIgnoreCase(this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), PARENT_ID).toString())) continue;
+							builder.append("\t\tWorkflow: " + this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
+							builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(workflowInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
+						}
+					}else {
+						builder.append(adapterHealth(message));
+						builder.append("\tChannel: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
+						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
+						builder.append("\tNo workflows were found for this channel.\n");
 					}
-				}else {
-					builder.append(adapterHealth(message));
-					builder.append("\tChannel: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), UNIQUE_ID).toString() + "\n");
-					builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(channelInstance.getObjectName(), COMPONENT_STATE).toString() + "\n");
-					builder.append("\tNo workflows were found for this channel.\n");
 				}
 			}
 		}
+
 		message.setContent(builder.toString(), message.getContentEncoding());
 		this.getConsumer().doResponse(message, message);
 	}
@@ -239,23 +260,30 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	private void channelHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
 
 		StringBuilder builder = new StringBuilder();
-		
-		if (!childFreeAdapter()) {
+		if(adapterHealth(message).equalsIgnoreCase("The adapter id provided is invalid.\n")) {
 			builder.append(adapterHealth(message));
-			if(!childFreeChannel(message)) {
+		}
+		if(channelHealth(message).equalsIgnoreCase("The channel id provided is invalid.\n")) {
+			builder.append(channelHealth(message));
+		}
+		else {
+			System.out.print("\n\t\t" + "************" + channelHealth(message) + "\n\n");
+			if (!childFreeAdapter()) {
+				builder.append(adapterHealth(message));
+				if(!childFreeChannel(message)) {
 					builder.append(channelHealth(message));
 					TreeSet<ObjectName> channelChildAttributes = (TreeSet<ObjectName>) (channelInstanceAttribute(message, CHILDREN_ATTRIBUTE));
 					for(ObjectName channelObject : channelChildAttributes) {
-						builder.append( channelObject.getKeyProperty("id") + "\n");
+						builder.append("\t\tWorkflow: " + channelObject.getKeyProperty("id") + "\n");
 					}
-					
-			}else {
-				builder.append(channelHealth(message));
-				builder.append("\tNo workflows were found for this channel. \n");
-			}
+				}else {
+					builder.append(channelHealth(message));
+					builder.append("\tNo workflows were found for this channel. \n");
+				}
 
-		}else {
-			builder.append("This adapter has no channels or workflows");
+			}else {
+				builder.append("This adapter has no channels or workflows");
+			}
 		}
 		message.setContent(builder.toString(), message.getContentEncoding());
 		this.getConsumer().doResponse(message, message);
@@ -266,13 +294,24 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	private void workflowHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
 
 		StringBuilder builder = new StringBuilder();
-
-		if(!childFreeAdapter()) {
+		if(adapterHealth(message).equalsIgnoreCase("The adapter id provided is invalid.\n")) {
 			builder.append(adapterHealth(message));
+		}
+		else if(channelHealth(message).equalsIgnoreCase("The channel id provided is invalid.\n")) {
 			builder.append(channelHealth(message));
+		}
+		else if(workflowHealth(message).equalsIgnoreCase("The workflow id provided is invalid.\n")) {
 			builder.append(workflowHealth(message));
-		}else {
-			builder.append("This adapter has no workflows.");
+		}
+		else {
+			if(!childFreeAdapter()) {
+				builder.append(adapterHealth(message));
+				builder.append(channelHealth(message));
+				builder.append(workflowHealth(message));
+			}else {
+				builder.append("This adapter has no workflows.");
+			}
+
 		}
 		message.setContent(builder.toString(), message.getContentEncoding());
 		this.getConsumer().doResponse(message, message);
@@ -293,7 +332,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 				workflowHealthCheck(message);
 			}
 			log.debug("Successfully retrieved health status.");
-			
+
 		} catch (MalformedObjectNameException | MBeanException | AttributeNotFoundException | InstanceNotFoundException
 				| ReflectionException e) {
 			StringBuilder builder = new StringBuilder();
