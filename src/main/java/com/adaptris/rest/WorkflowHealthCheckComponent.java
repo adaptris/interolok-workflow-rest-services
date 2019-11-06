@@ -263,11 +263,11 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		if(adapterHealth(message).equalsIgnoreCase("The adapter id provided is invalid.\n")) {
 			builder.append(adapterHealth(message));
 		}
-		if(channelHealth(message).equalsIgnoreCase("The channel id provided is invalid.\n")) {
+		else if(channelHealth(message).equalsIgnoreCase("The channel id provided is invalid.\n")) {
+			builder.append(adapterHealth(message));
 			builder.append(channelHealth(message));
 		}
 		else {
-			System.out.print("\n\t\t" + "************" + channelHealth(message) + "\n\n");
 			if (!childFreeAdapter()) {
 				builder.append(adapterHealth(message));
 				if(!childFreeChannel(message)) {
@@ -298,9 +298,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 			builder.append(adapterHealth(message));
 		}
 		else if(channelHealth(message).equalsIgnoreCase("The channel id provided is invalid.\n")) {
+			builder.append(adapterHealth(message));
 			builder.append(channelHealth(message));
 		}
 		else if(workflowHealth(message).equalsIgnoreCase("The workflow id provided is invalid.\n")) {
+			builder.append(adapterHealth(message));
+			builder.append(channelHealth(message));
 			builder.append(workflowHealth(message));
 		}
 		else {
