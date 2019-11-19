@@ -18,7 +18,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	private static final String PATH = "/workflow-health-check/*";
 
-	private static final String ADAPTER_OBJ_NAME = "*com.adaptris:type=Adapter,*";
+	private static final String ADAPTER_OBJ_TYPE_WILD = "com.adaptris:type=Adapter,*";
 
 	private static final String ADAPTER_OBJ_TYPE = "com.adaptris:type=Adapter,";
 
@@ -41,7 +41,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	private static final String INVALID_CHANNEL_ID = "The channel id provided is invalid.\n";
 
 	private static final String INVALID_WORKFLOW_ID = "The workflow id provided is invalid.\n";
-	
+
 
 	private transient WorkflowServicesConsumer consumer;
 
@@ -71,23 +71,29 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		}
 
 	}
-	
-	  private void healthPath(AdaptrisMessage message) {
-	        String pathValue = message.getMetadataValue(PATH_KEY);
-	        String[] pathItem = pathValue.split("/");
-	        adapterName = pathItem.length > 2 ? pathItem[2] : null;
-	        channelName = pathItem.length > 3 ? pathItem[3] : null;
-	        workflowName = pathItem.length > 4 ? pathItem[4] : null;
-	    }
-	  
-	  private String adapterName;
 
-	  private String channelName;
+	private void healthPath(AdaptrisMessage message) {
+		String pathValue = message.getMetadataValue(PATH_KEY);
+		String[] pathItem = pathValue.split("/");
+		adapterName = pathItem.length > 2 ? pathItem[2] : null;
+		channelName = pathItem.length > 3 ? pathItem[3] : null;
+		workflowName = pathItem.length > 4 ? pathItem[4] : null;
+	}
 
-	  private String workflowName;
+	private String adapterName;
 
-	private ObjectName adapterObjectName() throws OperationsException {
-		return new ObjectName(ADAPTER_OBJ_TYPE + "id=" + adapterName);
+	private String channelName;
+
+	private String workflowName;
+
+	private ObjectName adapterObjectName() throws OperationsException, ReflectionException, MBeanException {
+		if(adapterName != null) {
+			return new ObjectName(ADAPTER_OBJ_TYPE + "id=" + adapterName);
+		}
+		else {
+			Set<ObjectInstance> objectInstanceSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(ADAPTER_OBJ_TYPE_WILD), null);
+			return new ObjectName(ADAPTER_OBJ_TYPE + "id=" + this.getInterlokMBeanServer().getAttribute(objectInstanceSet.iterator().next().getObjectName(), UNIQUE_ID).toString());
+		}
 	}
 
 	private ObjectName channelObjectName() throws OperationsException {
@@ -119,7 +125,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	}
 
 	private Object adapterInstanceAttribute(String attribute)	throws OperationsException, ReflectionException, MBeanException {
-		return this.getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
+		try { 
+			return this.getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
+		} catch (InstanceNotFoundException e) {
+			log.warn(e.toString());
+			return INVALID_ADAPTER_ID;
+		}
 	}
 
 	private Object channelInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
@@ -138,9 +149,9 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 			String adapterState = ("Adapter State: " + adapterInstanceAttribute(COMPONENT_STATE) + "\n").toString();
 			if (adapterName == null || adapterName.contains(messageAdapterId)) {
 				return adapterId + adapterState;
-			} else {
-					return INVALID_ADAPTER_ID;
-				}
+			}else {
+				return INVALID_ADAPTER_ID;
+			}
 		} catch (InstanceNotFoundException e) {
 			log.warn(e.toString());
 			return INVALID_ADAPTER_ID;
@@ -186,9 +197,37 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	private void adapterHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
 		StringBuilder builder = new StringBuilder();
-		
 		builder.append(adapterHealth());
-		
+		if(adapterInstanceAttribute(CHILDREN_ATTRIBUTE) != INVALID_ADAPTER_ID) {
+			if(!childFreeAdapter()) {
+				adapterName = adapterInstanceAttribute(UNIQUE_ID).toString();
+				TreeSet<ObjectName> adapterChildAttributes = (TreeSet<ObjectName>) (adapterInstanceAttribute(CHILDREN_ATTRIBUTE));
+				for (ObjectName adapterObject : adapterChildAttributes) {
+					if(!(this.getInterlokMBeanServer().getAttribute(new ObjectName (CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), CHILDREN_ATTRIBUTE)).toString().contains("[]")) {
+						builder.append("\tChannel: " + adapterObject.getKeyProperty("id") + "\n");
+						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
+						TreeSet<ObjectName> channelChildAttributes = (TreeSet<ObjectName>) this.getInterlokMBeanServer().getAttribute((new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id"))), CHILDREN_ATTRIBUTE);
+						for (ObjectName channelObject : channelChildAttributes) {				
+							builder.append("\t\tWorkflow: " + channelObject.getKeyProperty("id") + "\n");
+							builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(WORKFLOW_OBJ_TYPE + "adapter=" + adapterName + ",channel=" + adapterObject.getKeyProperty("id") + ",id=" + channelObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
+						}
+					}
+					else {
+						builder.append("\tChannel: " + adapterObject.getKeyProperty("id") + "\n");
+						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
+						builder.append("\tNo workflows were found for this channel. \n");
+					}
+				}
+
+			}
+			else {
+				builder.append("No channels or workflows were found for this channel. \n");
+			}
+		}
+		else {
+			invalidAdapterId();
+		}
+
 
 		message.setContent(builder.toString(), message.getContentEncoding());
 		this.getConsumer().doResponse(message, message);
@@ -230,10 +269,10 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 		StringBuilder builder = new StringBuilder();
 
-				builder.append(adapterHealth());
-				builder.append(channelHealth());
-				builder.append(workflowHealth());
-			
+		builder.append(adapterHealth());
+		builder.append(channelHealth());
+		builder.append(workflowHealth());
+
 		message.setContent(builder.toString(), message.getContentEncoding());
 		this.getConsumer().doResponse(message, message);
 	}
@@ -243,7 +282,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		try {
 			if ((channelName == null)) {
 				adapterHealthCheck(message);
-				
+
 			} else if (workflowName == null) {
 				channelHealthCheck(message);
 			} else {
