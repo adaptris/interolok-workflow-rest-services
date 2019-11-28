@@ -135,26 +135,25 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   
   @Override
   public void init(Properties config) throws Exception {
-    this.getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-    this.getConsumer().setConsumedUrlPath(PATH);
-    this.getConsumer().setMessageListener(this);
-    this.getConsumer().prepare();
-    LifecycleHelper.init(getConsumer());
+    
   }
 
   @Override
   public void start() throws Exception {
+    WorkflowServicesComponent instance = this;
     new Thread(new Runnable() {
-      
       @Override
       public void run() {
         try {
-          // Wait for the Jetty context to have been created.
-          Thread.sleep(initialJettyContextWaitMs());
+          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+          getConsumer().setConsumedUrlPath(PATH);
+          getConsumer().setMessageListener(instance);
+          getConsumer().prepare();
+          LifecycleHelper.init(getConsumer());
           LifecycleHelper.start(getConsumer());
           
           log.debug("Workflow REST services component started.");
-        } catch (CoreException | InterruptedException e) {
+        } catch (CoreException e) {
           log.error("Could not start the Workflow REST services component.", e);
         }
       }

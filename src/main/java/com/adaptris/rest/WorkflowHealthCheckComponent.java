@@ -1,13 +1,26 @@
 package com.adaptris.rest;
 
-import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.management.*;
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
+import javax.management.OperationsException;
+import javax.management.ReflectionException;
 
-import com.adaptris.core.*;
+import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.core.AdaptrisMessageFactory;
+import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.CoreException;
+import com.adaptris.core.DefaultMessageFactory;
+import com.adaptris.core.DefaultSerializableMessageTranslator;
+import com.adaptris.core.ServiceException;
 import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
@@ -302,29 +315,27 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	@Override
 	public void init(Properties config) throws Exception {
-		if (this.getInterlokMBeanServer() == null)
-			this.setInterlokMBeanServer(JmxHelper.findMBeanServer());
-
-		this.getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-		this.getConsumer().setConsumedUrlPath(PATH);
-		this.getConsumer().setMessageListener(this);
-		this.getConsumer().prepare();
-		LifecycleHelper.init(getConsumer());
 	}
 
 	@Override
 	public void start() throws Exception {
+	  WorkflowHealthCheckComponent instance = this;
 		new Thread(new Runnable() {
-
 			@Override
 			public void run() {
 				try {
-					// Wait for the Jetty context to have been created.
-					Thread.sleep(initialJettyContextWaitMs());
+				  if (getInterlokMBeanServer() == null)
+		            setInterlokMBeanServer(JmxHelper.findMBeanServer());
+
+    		        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+    		        getConsumer().setConsumedUrlPath(PATH);
+    		        getConsumer().setMessageListener(instance);
+    		        getConsumer().prepare();
+    		        LifecycleHelper.init(getConsumer());
 					LifecycleHelper.start(getConsumer());
 
 					log.debug("Workflow REST services component started.");
-				} catch (CoreException | InterruptedException e) {
+				} catch (CoreException e) {
 					log.error("Could not start the Workflow REST services component.", e);
 				}
 			}
