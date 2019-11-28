@@ -14,6 +14,8 @@ import javax.management.ObjectName;
 import javax.management.OperationsException;
 import javax.management.ReflectionException;
 
+import org.apache.commons.lang.ObjectUtils;
+
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
 import com.adaptris.core.AdaptrisMessageListener;
@@ -26,10 +28,10 @@ import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
 
 public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
-
-	private static final Long DEFAULT_INITIAL_JETTY_CONTEXT_WAIT = (30l * 1000l);
-
-	private static final String PATH = "/workflow-health-check/*";
+	
+	private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
+	  
+	private static final String DEFAULT_PATH = "/workflow-health-check/*";
 
 	private static final String ADAPTER_OBJ_TYPE_WILD = "com.adaptris:type=Adapter,*";
 
@@ -62,11 +64,11 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	private transient WorkflowTargetTranslator targetTranslator;
 
-	private transient Long initialJettyContextWaitMs;
-
 	private transient MBeanServer interlokMBeanServer;
 
 	private transient AdaptrisMessageFactory messageFactory;
+	
+	private String configuredUrlPath;
 
 	public WorkflowHealthCheckComponent() {
 		this.setConsumer(new HttpRestWorkflowServicesConsumer());
@@ -315,6 +317,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	@Override
 	public void init(Properties config) throws Exception {
+	  this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
 	}
 
 	@Override
@@ -328,7 +331,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		            setInterlokMBeanServer(JmxHelper.findMBeanServer());
 
     		        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-    		        getConsumer().setConsumedUrlPath(PATH);
+    		        getConsumer().setConsumedUrlPath(configuredUrlPath());
     		        getConsumer().setMessageListener(instance);
     		        getConsumer().prepare();
     		        LifecycleHelper.init(getConsumer());
@@ -382,19 +385,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		this.messageTranslator = messageTranslator;
 	}
 
-	long initialJettyContextWaitMs() {
-		return this.getInitialJettyContextWaitMs() == null ? DEFAULT_INITIAL_JETTY_CONTEXT_WAIT
-				: this.getInitialJettyContextWaitMs();
-	}
-
-	public Long getInitialJettyContextWaitMs() {
-		return initialJettyContextWaitMs;
-	}
-
-	public void setInitialJettyContextWaitMs(Long initialJettyContextWaitMs) {
-		this.initialJettyContextWaitMs = initialJettyContextWaitMs;
-	}
-
 	public MBeanServer getInterlokMBeanServer() {
 		return interlokMBeanServer;
 	}
@@ -409,6 +399,18 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
 		this.messageFactory = messageFactory;
+	}
+	
+	String configuredUrlPath() {
+	    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
+	}
+	  
+	public String getConfiguredUrlPath() {
+	    return configuredUrlPath;
+	}
+
+	public void setConfiguredUrlPath(String configuredUrlPath) {
+	    this.configuredUrlPath = configuredUrlPath;
 	}
 
 }

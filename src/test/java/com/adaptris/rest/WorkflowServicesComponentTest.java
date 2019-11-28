@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 import javax.management.MBeanServer;
@@ -65,7 +66,6 @@ public class WorkflowServicesComponentTest extends TestCase {
     mockSerMessage = new SerializableAdaptrisMessage();
     
     workflowServicesComponent = new WorkflowServicesComponent();
-    workflowServicesComponent.setInitialJettyContextWaitMs(0l);
     workflowServicesComponent.setConsumer(mockConsumer);
     workflowServicesComponent.setJmxClient(mockJmxClient);
     
@@ -126,7 +126,7 @@ public class WorkflowServicesComponentTest extends TestCase {
   }
   
   private void startComponent() throws Exception {
-    workflowServicesComponent.init(null);
+    workflowServicesComponent.init(new Properties());
     workflowServicesComponent.start();
   }
   
