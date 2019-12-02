@@ -7,7 +7,8 @@ import org.codehaus.jettison.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AdapterHealth extends Health {
+public class AdapterHealth extends CommonHealth
+{
 	private final List<ChannelHealth> channels = new ArrayList<>();
 
 	public AdapterHealth(String id, String state) {

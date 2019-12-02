@@ -7,7 +7,8 @@ import org.codehaus.jettison.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChannelHealth extends Health {
+public class ChannelHealth extends CommonHealth
+{
 	private final List<WorkflowHealth> workflows = new ArrayList<>();
 
 	public ChannelHealth(String id, String state) {

@@ -12,7 +12,7 @@ import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.rest.health.AdapterHealth;
 import com.adaptris.rest.health.ChannelHealth;
-import com.adaptris.rest.health.Health;
+import com.adaptris.rest.health.CommonHealth;
 import com.adaptris.rest.health.WorkflowHealth;
 
 public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
@@ -122,7 +122,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	}
 
 	private Object adapterInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
-		try { 
+		try {
+			/*
+			 * This method could probably be split into two; where one
+			 * handle child attributes as a Set and another that
+			 * returns a String in all other instances.
+			 */
 			return getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
 		} catch (InstanceNotFoundException e) {
 			log.warn(e.toString());
@@ -149,7 +154,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		return children;
 	}
 
-	private Object workflowInstanceAttribute(String attribute)	throws OperationsException, ReflectionException, MBeanException {
+	private Object workflowInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
 		return getInterlokMBeanServer().getAttribute(workflowObjectName(workflowName), attribute);
 	}
 
@@ -203,7 +208,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	 * and any child types.
 	 */
 
-	private Health adapterHealthCheck() throws Exception {
+	private CommonHealth adapterHealthCheck() throws Exception {
 		AdapterHealth adapter = adapterHealth();
 		adapterName = adapterInstanceAttribute(UNIQUE_ID).toString();
 
@@ -240,6 +245,10 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 				builder.append(channelHealth());
 
+/*
+ * FIXME This method needs rewriting to work in a similar manner to adapter/workflow above/below
+ */
+
 					Set<ObjectName> channelChildAttributes = getChannelChildren();
 					for (ObjectName channelObject : channelChildAttributes) {
 
@@ -254,7 +263,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		this.getConsumer().doResponse(message, message);
 	}
 
-	private Health workflowHealthCheck() throws OperationsException, ReflectionException, MBeanException {
+	private CommonHealth workflowHealthCheck() throws OperationsException, ReflectionException, MBeanException {
 		AdapterHealth adapter = adapterHealth();
 		ChannelHealth channel = channelHealth();
 		adapter.addChannelHealth(channel);
@@ -264,7 +273,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	private void completeHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException {
 		try {
-			Health healthResponse = null;
+			CommonHealth healthResponse = null;
 			/*
 			 * Get a health object that we can serialize to JSON/XML as
 			 * necessary. This allows the HTTP response to be set in

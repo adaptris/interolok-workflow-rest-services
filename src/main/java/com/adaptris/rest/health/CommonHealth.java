@@ -3,12 +3,12 @@ package com.adaptris.rest.health;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
-public abstract class Health
+public abstract class CommonHealth
 {
 	protected final String id;
 	protected final String state;
 
-	public Health(String id, String state) {
+	public CommonHealth(String id, String state) {
 		this.id = id;
 		this.state = state;
 	}
