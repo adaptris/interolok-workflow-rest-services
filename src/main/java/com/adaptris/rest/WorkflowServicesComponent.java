@@ -155,8 +155,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
           getConsumer().setConsumedUrlPath(configuredUrlPath());
           getConsumer().setMessageListener(instance);
           getConsumer().prepare();
-          LifecycleHelper.init(getConsumer());
-          LifecycleHelper.start(getConsumer());
+          LifecycleHelper.initAndStart(getConsumer());
           
           log.debug("Workflow REST services component started.");
         } catch (CoreException e) {
