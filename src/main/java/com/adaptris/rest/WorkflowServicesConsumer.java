@@ -14,8 +14,20 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   private StandaloneConsumer standaloneConsumer;
   
   private AdaptrisMessageListener messageListener;
+  
+  /**
+   * This is the url that this consumer will listen for requests.
+   * For example "/workflow-services/*"; will trigger this consumer for any requests on "http://host:port/workflow-services/...".
+   */
+  private String consumedUrlPath;
+  
+  /**
+   * A comma separated list of accepted http request methods; GET, POST, PATCH etc etc
+   * And example might be "GET,POST".
+   */
+  private String acceptedHttpMethods;
     
-  protected abstract StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener);
+  protected abstract StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods);
   
   protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException;
   
@@ -23,7 +35,7 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
 
   @Override
   public void prepare() throws CoreException {
-    this.setStandaloneConsumer(configureConsumer(this.getMessageListener()));
+    this.setStandaloneConsumer(configureConsumer(this.getMessageListener(), this.getConsumedUrlPath(), this.getAcceptedHttpMethods()));
     getStandaloneConsumer().prepare();
   }
   
@@ -61,6 +73,22 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
 
   public void setMessageListener(AdaptrisMessageListener messageListener) {
     this.messageListener = messageListener;
+  }
+
+  public String getConsumedUrlPath() {
+    return consumedUrlPath;
+  }
+
+  public void setConsumedUrlPath(String consumedUrlPath) {
+    this.consumedUrlPath = consumedUrlPath;
+  }
+
+  public String getAcceptedHttpMethods() {
+    return acceptedHttpMethods;
+  }
+
+  public void setAcceptedHttpMethods(String acceptedHttpMethods) {
+    this.acceptedHttpMethods = acceptedHttpMethods;
   }
   
 }

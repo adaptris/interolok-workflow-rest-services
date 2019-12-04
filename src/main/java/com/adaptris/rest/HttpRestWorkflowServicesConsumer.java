@@ -18,10 +18,6 @@ import com.adaptris.core.metadata.NoOpMetadataFilter;
 
 public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   
-  private static final String PATH = "/workflow-services/*";
-  
-  private static final String ACCEPTED_FILTER = "POST,GET";
-  
   private static final String OK_200 = "200";
   
   private static final String ERROR_400 = "400";
@@ -36,7 +32,7 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   }
   
   @Override
-  protected StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener) {
+  protected StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods) {
     MetadataResponseHeaderProvider metadataResponseHeaderProvider = new MetadataResponseHeaderProvider();
     metadataResponseHeaderProvider.setFilter(new NoOpMetadataFilter());
     
@@ -46,8 +42,8 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
     EmbeddedConnection jettyConnection = new EmbeddedConnection();
     JettyMessageConsumer messageConsumer = new JettyMessageConsumer();
     
-    ConfiguredConsumeDestination configuredConsumeDestination = new ConfiguredConsumeDestination(PATH);
-    configuredConsumeDestination.setFilterExpression(ACCEPTED_FILTER);
+    ConfiguredConsumeDestination configuredConsumeDestination = new ConfiguredConsumeDestination(consumedUrlPath);
+    configuredConsumeDestination.setFilterExpression(acceptedHttpMethods);
     
     messageConsumer.setDestination(configuredConsumeDestination);
     messageConsumer.setHeaderHandler(new MetadataHeaderHandler(HEADER_PREFIX));

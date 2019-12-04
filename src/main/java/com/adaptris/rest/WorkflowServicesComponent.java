@@ -2,7 +2,17 @@ package com.adaptris.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ObjectUtils;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
@@ -17,15 +27,15 @@ import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-import javax.management.*;
-
-import org.apache.commons.io.IOUtils;
-
 public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
-  
-  private static final Long DEFAULT_INITIAL_JETTY_CONTEXT_WAIT = (30l*1000l);
-    
+      
   private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
+  
+  private static final String BOOTSTRAP_PATH_KEY = "rest.workflow-services.path";
+  
+  private static final String DEFAULT_PATH = "/workflow-services/*";
+  
+  private static final String ACCEPTED_FILTER = "POST,GET";
   
   private static final String DEF_HEADER = "META-INF/definition-header.yaml";
   
@@ -56,12 +66,12 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   private transient InterlokJmxClient jmxClient;
   
   private transient WorkflowTargetTranslator targetTranslator;
-  
-  private transient Long initialJettyContextWaitMs;
-  
+    
   private transient MBeanServer interlokMBeanServer;
   
   private transient AdaptrisMessageFactory messageFactory;
+  
+  private String configuredUrlPath;
   
   public WorkflowServicesComponent() {
     this.setConsumer(new HttpRestWorkflowServicesConsumer());
@@ -131,25 +141,25 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   
   @Override
   public void init(Properties config) throws Exception {
-    this.getConsumer().setMessageListener(this);
-    this.getConsumer().prepare();
-    LifecycleHelper.init(getConsumer());
+    this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
   @Override
   public void start() throws Exception {
+    WorkflowServicesComponent instance = this;
     new Thread(new Runnable() {
-      
       @Override
       public void run() {
         try {
-          // Wait for the Jetty context to have been created.
-          Thread.sleep(initialJettyContextWaitMs());
-          LifecycleHelper.start(getConsumer());
+          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+          getConsumer().setConsumedUrlPath(configuredUrlPath());
+          getConsumer().setMessageListener(instance);
+          getConsumer().prepare();
+          LifecycleHelper.initAndStart(getConsumer());
           
           log.debug("Workflow REST services component started.");
-        } catch (CoreException | InterruptedException e) {
-          log.error("Could not start the Workflow REST services component.", e);
+        } catch (CoreException e) {
+          log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
         }
       }
     }).start();
@@ -203,18 +213,6 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
     this.jmxClient = jmxClient;
   }
 
-  long initialJettyContextWaitMs() {
-    return this.getInitialJettyContextWaitMs() == null ? DEFAULT_INITIAL_JETTY_CONTEXT_WAIT : this.getInitialJettyContextWaitMs();
-  }
-  
-  public Long getInitialJettyContextWaitMs() {
-    return initialJettyContextWaitMs;
-  }
-
-  public void setInitialJettyContextWaitMs(Long initialJettyContextWaitMs) {
-    this.initialJettyContextWaitMs = initialJettyContextWaitMs;
-  }
-
   public MBeanServer getInterlokMBeanServer() {
     return interlokMBeanServer;
   }
@@ -229,6 +227,18 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
     this.messageFactory = messageFactory;
+  }
+
+  String configuredUrlPath() {
+    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
+  }
+  
+  public String getConfiguredUrlPath() {
+    return configuredUrlPath;
+  }
+
+  public void setConfiguredUrlPath(String configuredUrlPath) {
+    this.configuredUrlPath = configuredUrlPath;
   }
 
 }
