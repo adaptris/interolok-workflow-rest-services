@@ -160,7 +160,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
           
           log.debug("Workflow REST services component started.");
         } catch (CoreException e) {
-          log.error("Could not start the Workflow REST services component.", e);
+          log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
         }
       }
     }).start();

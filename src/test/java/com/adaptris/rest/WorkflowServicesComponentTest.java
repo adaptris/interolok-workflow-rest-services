@@ -3,6 +3,7 @@ package com.adaptris.rest;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import static org.mockito.Matchers.any;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
+import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.SerializableAdaptrisMessage;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
@@ -73,8 +75,6 @@ public class WorkflowServicesComponentTest extends TestCase {
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_ONE), WORKFLOW_MANAGER_CLASS));
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), WORKFLOW_MANAGER_CLASS));
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), NOT_WORKFLOW_MANAGER_CLASS));
-    
-    startComponent();
   }
   
   public void tearDown() throws Exception {
@@ -82,6 +82,8 @@ public class WorkflowServicesComponentTest extends TestCase {
   }
   
   public void testHappyPathMessageProcessed() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/myAdapter/myChannel/myWorkflow");
     
     when(mockJmxClient.process(any(), any())).thenReturn(mockSerMessage);
@@ -93,6 +95,8 @@ public class WorkflowServicesComponentTest extends TestCase {
   }
   
   public void testYamlDefRequest() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     workflowServicesComponent.onAdaptrisMessage(message);
     
@@ -100,6 +104,8 @@ public class WorkflowServicesComponentTest extends TestCase {
   }
   
   public void testProcessingWorkflowsDefinition() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     message.addMessageHeader(HTTP_HEADER_HOST, "myHost:8080");
     workflowServicesComponent.setInterlokMBeanServer(mockMbeanServer);
@@ -117,7 +123,19 @@ public class WorkflowServicesComponentTest extends TestCase {
     assertTrue(returnedMessage.getContent().contains("standard-workflow-2"));
   }
   
+  public void testInitFails() throws Exception {
+    doThrow(new CoreException("Expected"))
+        .when(mockConsumer).init();
+    
+    startComponent();
+    
+    // If the init fails, then start shuld not run.
+    verify(mockConsumer, times(0)).start();
+  }
+  
   public void testErrorResponse() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/8/9");
     workflowServicesComponent.onAdaptrisMessage(message);
     
