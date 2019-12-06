@@ -39,13 +39,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 	private static final String PATH_KEY = "jettyURI";
 
-	private static final String INVALID_ADAPTER_ID = "The adapter id provided is invalid.\n";
-
-	private static final String INVALID_CHANNEL_ID = "The channel id provided is invalid.\n";
-
-	private static final String INVALID_WORKFLOW_ID = "The workflow id provided is invalid.\n";
-
-
 	private transient WorkflowServicesConsumer consumer;
 
 	private transient DefaultSerializableMessageTranslator messageTranslator;
@@ -69,7 +62,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		try {
 			this.healthPath(message);
 			this.completeHealthCheck(message);
-		} catch (ServiceException | OperationsException e) {
+		} catch (ServiceException e) {
 			log.error(message.getContent());
 		}
 	}
@@ -82,11 +75,9 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		workflowName = pathItem.length > 4 ? pathItem[4] : null;
 	}
 
-	private String adapterName;
-
-	private String channelName;
-
-	private String workflowName;
+	private String adapterName;  /* the requested adapter; if null get all adapters */
+	private String channelName;  /* the requested channel; if null get all channels for the adapter */
+	private String workflowName; /* the requested workflow; if null get all workflows for the channel */
 
 	private ObjectName adapterObjectName() throws OperationsException, ReflectionException, MBeanException {
 		if (adapterName != null) {
@@ -109,74 +100,72 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	 * The following three methods could probably be inlined.
 	 */
 
-	private Boolean invalidAdapterId() throws ReflectionException, MBeanException, OperationsException {
+	private Boolean invalidAdapterId() {
 		return adapterHealth() != null;
 	}
 
-	private Boolean invalidChannelId() throws ReflectionException, MBeanException, OperationsException {
+	private Boolean invalidChannelId() {
 		return channelHealth() != null;
 	}
 
-	private Boolean invalidWorkflowId() throws ReflectionException, MBeanException, OperationsException {
+	private Boolean invalidWorkflowId() {
 		return workflowHealth() != null;
 	}
 
-	private Object adapterInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
+	private String getAdapterAttribute(String attribute) {
 		try {
-			/*
-			 * This method could probably be split into two; where one
-			 * handle child attributes as a Set and another that
-			 * returns a String in all other instances.
-			 */
-			return getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
+			return (String)getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
+		} catch (Exception e) {
+			log.error("Could not get adapter attribute [" + attribute + "]", e);
 			return null;
 		}
 	}
 
-	private Set<ObjectName> getAdapterChildren() throws Exception {
-		Object o = adapterInstanceAttribute(CHILDREN_ATTRIBUTE);
-		if (o == null) {
-			return new HashSet<>();
+	private Set<ObjectName> getAdapterChildren() {
+		try {
+			return (Set<ObjectName>)getInterlokMBeanServer().getAttribute(adapterObjectName(), CHILDREN_ATTRIBUTE);
+		} catch (Exception e) {
+			log.error("Could not get adapter children", e);
+			return new HashSet<>(); // is it better to return an empty set than null?
 		}
-		Set<ObjectName> children = (Set<ObjectName>)o;
-		return children;
 	}
+
+	/*
+	 * TODO The following methods to get channel attributes/children should match the above for adapters.
+	 */
 
 	private Object channelInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
 		return getInterlokMBeanServer().getAttribute(channelObjectName(channelName), attribute);
 	}
 
 	private Set<ObjectName> getChannelChildren() throws Exception {
-		Object o = channelInstanceAttribute(CHILDREN_ATTRIBUTE);
-		Set<ObjectName> children = (Set<ObjectName>)o;
-		return children;
+		return (Set<ObjectName>)channelInstanceAttribute(CHILDREN_ATTRIBUTE);
 	}
 
-	private Object workflowInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
-		return getInterlokMBeanServer().getAttribute(workflowObjectName(workflowName), attribute);
+	private String workflowInstanceAttribute(String attribute) {
+		try {
+			return (String)getInterlokMBeanServer().getAttribute(workflowObjectName(workflowName), attribute);
+		} catch (Exception e) {
+			log.error("Could not get workflow attribute [" + attribute + "]", e);
+			return null;
+		}
 	}
 
 	/*
 	 * The following three methods get a single health object.
 	 */
 
-	private AdapterHealth adapterHealth() throws ReflectionException, MBeanException, OperationsException {
-		try {
-			String messageAdapterId = adapterInstanceAttribute(UNIQUE_ID).toString();
-			if (adapterName == null || adapterName.contains(messageAdapterId)) {
-				String id = adapterInstanceAttribute(UNIQUE_ID).toString();
-				String state = adapterInstanceAttribute(COMPONENT_STATE).toString();
-				return new AdapterHealth(id, state);
-			}
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
+	private AdapterHealth adapterHealth() {
+		String messageAdapterId = getAdapterAttribute(UNIQUE_ID);
+		if (adapterName == null || adapterName.contains(messageAdapterId)) {
+			String id = getAdapterAttribute(UNIQUE_ID);
+			String state = getAdapterAttribute(COMPONENT_STATE);
+			return new AdapterHealth(id, state);
 		}
 		return null;
 	}
 
-	private ChannelHealth channelHealth() throws OperationsException, ReflectionException, MBeanException {
+	private ChannelHealth channelHealth() {
 		try {
 			String messageChannelId = channelInstanceAttribute(UNIQUE_ID).toString();
 			if (channelName.contains(messageChannelId)) {
@@ -184,20 +173,20 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 				String state = channelInstanceAttribute(COMPONENT_STATE).toString();
 				return new ChannelHealth(id, state);
 			}
-		} catch (InstanceNotFoundException e) {
+		} catch (Exception e) {
 			log.warn(e.toString());
 		}
 		return null;
 	}
 
-	private WorkflowHealth workflowHealth() throws ReflectionException, MBeanException, OperationsException {
+	private WorkflowHealth workflowHealth() {
 		try {
-			if (channelInstanceAttribute(CHILDREN_ATTRIBUTE).toString().contains(workflowName)) {
-				String id = workflowInstanceAttribute(UNIQUE_ID).toString();
-				String state = workflowInstanceAttribute(COMPONENT_STATE).toString();
+			if (getChannelChildren().contains(workflowName)) {
+				String id = workflowInstanceAttribute(UNIQUE_ID);
+				String state = workflowInstanceAttribute(COMPONENT_STATE);
 				return new WorkflowHealth(id, state);
 			}
-		} catch (InstanceNotFoundException e) {
+		} catch (Exception e) {
 			log.warn(e.toString());
 		}
 		return null;
@@ -209,25 +198,25 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	 */
 
 	private CommonHealth adapterHealthCheck() throws Exception {
-		AdapterHealth adapter = adapterHealth();
-		adapterName = adapterInstanceAttribute(UNIQUE_ID).toString();
+		AdapterHealth adapter = adapterHealth(); // get the adapter health
+		adapterName = getAdapterAttribute(UNIQUE_ID);
 
 		for (ObjectName adapterObject : getAdapterChildren()) {
 
 			String channelId = adapterObject.getKeyProperty("id");
-			String channelState = getInterlokMBeanServer().getAttribute(channelObjectName(channelId), COMPONENT_STATE).toString();
+			String channelState = channelInstanceAttribute(COMPONENT_STATE).toString();
 			ChannelHealth channel = new ChannelHealth(channelId, channelState);
 
 			for (ObjectName channelObject : getChannelChildren()) {
 
 				String workflowId = channelObject.getKeyProperty("id");
-				String workflowState = getInterlokMBeanServer().getAttribute(workflowObjectName(workflowId), COMPONENT_STATE).toString();
+				String workflowState = workflowInstanceAttribute(COMPONENT_STATE);
 				WorkflowHealth workflow = new WorkflowHealth(workflowId, workflowState);
 
-				channel.addWorkflowHealth(workflow);
+				channel.addWorkflowHealth(workflow); // for each workflow, add its health
 			}
 
-			adapter.addChannelHealth(channel);
+			adapter.addChannelHealth(channel); // for each channel, add its health
 		}
 
 		return adapter;
@@ -247,13 +236,15 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
 /*
  * FIXME This method needs rewriting to work in a similar manner to adapter/workflow above/below
+ *
+ * (I may have broken this method.)
  */
 
 					Set<ObjectName> channelChildAttributes = getChannelChildren();
 					for (ObjectName channelObject : channelChildAttributes) {
 
 						builder.append("\t\tWorkflow: " + channelObject.getKeyProperty("id") + "\n");
-						builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(workflowObjectName(channelObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
+						builder.append("\t\tWorkflow State: " + workflowInstanceAttribute(COMPONENT_STATE) + "\n");
 
 					}
 
@@ -263,16 +254,17 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 		this.getConsumer().doResponse(message, message);
 	}
 
-	private CommonHealth workflowHealthCheck() throws OperationsException, ReflectionException, MBeanException {
-		AdapterHealth adapter = adapterHealth();
-		ChannelHealth channel = channelHealth();
+	private CommonHealth workflowHealthCheck() {
+		AdapterHealth adapter = adapterHealth(); // get the health of the parent adapter
+		ChannelHealth channel = channelHealth(); // get the health of the parent channel
 		adapter.addChannelHealth(channel);
 		channel.addWorkflowHealth(workflowHealth());
 		return adapter;
 	}
 
-	private void completeHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException {
+	private void completeHealthCheck(AdaptrisMessage message) throws ServiceException {
 		try {
+
 			CommonHealth healthResponse = null;
 			/*
 			 * Get a health object that we can serialize to JSON/XML as
@@ -287,10 +279,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 			} else {
 				healthResponse = workflowHealthCheck();
 			}
+
 			log.debug("Successfully retrieved health status.");
 
 			message.setContent(healthResponse.getJSON().toString(), message.getContentEncoding());
 			this.getConsumer().doResponse(message, message);
+
 		} catch (Exception e) {
 			log.error("Failed to retrieve health status.", e);
 			message.setContent(e.toString(), message.getContentEncoding());
@@ -312,7 +306,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	}
 
 	@Override
-	public void start() throws Exception {
+	public void start() {
 		new Thread(() -> {
 			try {
 				// Wait for the Jetty context to have been created.
@@ -328,12 +322,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 	}
 
 	@Override
-	public void stop() throws Exception {
+	public void stop() {
 		LifecycleHelper.stop(getConsumer());
 	}
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		LifecycleHelper.close(getConsumer());
 	}
 
