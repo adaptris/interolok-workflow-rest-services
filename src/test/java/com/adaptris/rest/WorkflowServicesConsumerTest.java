@@ -23,6 +23,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
     
     servicesConsumer = new HttpRestWorkflowServicesConsumer();
     servicesConsumer.setMessageListener(mockMessageListener);
+    servicesConsumer.setAcceptedHttpMethods("POST,GET");
+    servicesConsumer.setConsumedUrlPath("/myPath/");
   }
   
   public void testLifecycle() throws Exception {

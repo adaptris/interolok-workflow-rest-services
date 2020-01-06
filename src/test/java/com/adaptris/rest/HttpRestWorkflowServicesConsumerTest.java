@@ -47,7 +47,7 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
       public String friendlyName() {
         return null;
       }
-    });
+    }, PATH, ACCEPTED_FILTER);
     
     assertEquals(PATH, standaloneConsumer.getConsumer().getDestination().getDestination());
     assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
