@@ -2,6 +2,7 @@ package com.adaptris.rest;
 
 import static org.mockito.Mockito.verify;
 
+import com.adaptris.core.BaseCase;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -12,7 +13,7 @@ import com.adaptris.core.StandaloneConsumer;
 
 import junit.framework.TestCase;
 
-public class WorkflowServicesConsumerTest extends TestCase {
+public class WorkflowServicesConsumerTest extends BaseCase {
   
   private WorkflowServicesConsumer servicesConsumer;
   
@@ -46,4 +47,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
     verify(mockStandaloneConsumer).requestClose();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

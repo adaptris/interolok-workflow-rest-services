@@ -1,11 +1,13 @@
 package com.adaptris.rest;
 
+import com.adaptris.core.BaseCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,7 +33,7 @@ import com.adaptris.interlok.types.SerializableMessage;
 
 import junit.framework.TestCase;
 
-public class WorkflowServicesComponentTest extends TestCase {
+public class WorkflowServicesComponentTest extends BaseCase {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -163,4 +165,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     workflowServicesComponent.destroy();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

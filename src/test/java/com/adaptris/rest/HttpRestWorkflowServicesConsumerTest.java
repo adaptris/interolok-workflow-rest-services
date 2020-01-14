@@ -1,7 +1,9 @@
 package com.adaptris.rest;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
+import com.adaptris.core.BaseCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,7 +18,7 @@ import com.adaptris.core.http.jetty.JettyResponseService;
 
 import junit.framework.TestCase;
 
-public class HttpRestWorkflowServicesConsumerTest extends TestCase {
+public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
   
   private static final String PATH = "/workflow-services/*";
   
@@ -75,5 +77,10 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     
     verify(mockResponseService).setHttpStatus("400");
     verify(mockResponseService).doService(originalMessage);
+  }
+
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
   }
 }
