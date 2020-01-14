@@ -2,6 +2,8 @@ package com.adaptris.rest;
 
 import static org.mockito.Mockito.verify;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -17,7 +19,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
   @Mock private StandaloneConsumer mockStandaloneConsumer;
   
   @Mock private AdaptrisMessageListener mockMessageListener;
-  
+
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -26,7 +29,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
     servicesConsumer.setAcceptedHttpMethods("POST,GET");
     servicesConsumer.setConsumedUrlPath("/myPath/");
   }
-  
+
+  @Test
   public void testLifecycle() throws Exception {
     servicesConsumer.prepare();
     
