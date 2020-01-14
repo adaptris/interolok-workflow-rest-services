@@ -1,7 +1,12 @@
 package com.adaptris.rest;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
+import com.adaptris.core.BaseCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -13,7 +18,7 @@ import com.adaptris.core.http.jetty.JettyResponseService;
 
 import junit.framework.TestCase;
 
-public class HttpRestWorkflowServicesConsumerTest extends TestCase {
+public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
   
   private static final String PATH = "/workflow-services/*";
   
@@ -26,7 +31,8 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
   private AdaptrisMessage processedMessage;
   
   @Mock private JettyResponseService mockResponseService;
-  
+
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -34,11 +40,13 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     originalMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
     processedMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
-  
+
+  @After
   public void tearDown() throws Exception {
     
   }
-  
+
+  @Test
   public void testCreateStandardConsumer() throws Exception {
     StandaloneConsumer standaloneConsumer = servicesConsumer.configureConsumer(new AdaptrisMessageListener() {
       @Override
@@ -52,7 +60,8 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     assertEquals(PATH, standaloneConsumer.getConsumer().getDestination().getDestination());
     assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
   }
-  
+
+  @Test
   public void testOkResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
     servicesConsumer.doResponse(originalMessage, processedMessage);
@@ -61,11 +70,17 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     verify(mockResponseService).doService(processedMessage);
   }
 
+  @Test
   public void testErrorResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
     servicesConsumer.doErrorResponse(originalMessage, new Exception());
     
     verify(mockResponseService).setHttpStatus("400");
     verify(mockResponseService).doService(originalMessage);
+  }
+
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
   }
 }
