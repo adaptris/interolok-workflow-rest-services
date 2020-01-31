@@ -1,20 +1,16 @@
 package com.adaptris.rest;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.TreeSet;
 
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanException;
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-import javax.management.OperationsException;
-import javax.management.ReflectionException;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.codehaus.jettison.json.JSONArray;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
@@ -28,389 +24,305 @@ import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
 
 public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
-	
-	private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
-	  
-	private static final String DEFAULT_PATH = "/workflow-health-check/*";
 
-	private static final String ADAPTER_OBJ_TYPE_WILD = "com.adaptris:type=Adapter,*";
+  private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
 
-	private static final String ADAPTER_OBJ_TYPE = "com.adaptris:type=Adapter,";
+  private static final String ACCEPTED_FILTER = "GET";
 
-	private static final String CHANNEL_OBJ_TYPE = "com.adaptris:type=Channel,";
+  private static final String DEFAULT_PATH = "/workflow-health-check/*";
 
-	private static final String WORKFLOW_OBJ_TYPE = "com.adaptris:type=Workflow,";
+  private static final String ADAPTER_OBJ_TYPE_WILD = "com.adaptris:type=Adapter,*";
 
-	private static final String ACCEPTED_FILTER = "GET";
+  private static final String UNIQUE_ID = "UniqueId";
 
-	private static final String UNIQUE_ID = "UniqueId";
+  private static final String CHILDREN_ATTRIBUTE = "Children";
 
-	private static final String CHILDREN_ATTRIBUTE = "Children";
+  private static final String COMPONENT_STATE = "ComponentState";
 
-	private static final String COMPONENT_STATE = "ComponentState";
+  private static final String PATH_KEY = "jettyURI";
 
-	private static final String PATH_KEY = "jettyURI";
+  private transient WorkflowServicesConsumer consumer;
 
-	private static final String INVALID_ADAPTER_ID = "The adapter id provided is invalid.\n";
+  private transient DefaultSerializableMessageTranslator messageTranslator;
 
-	private static final String INVALID_CHANNEL_ID = "The channel id provided is invalid.\n";
+  private transient WorkflowTargetTranslator targetTranslator;
 
-	private static final String INVALID_WORKFLOW_ID = "The workflow id provided is invalid.\n";
+  private transient MBeanServer interlokMBeanServer;
 
+  private transient AdaptrisMessageFactory messageFactory;
 
-	private transient WorkflowServicesConsumer consumer;
+  private String configuredUrlPath;
 
-	private transient DefaultSerializableMessageTranslator messageTranslator;
+  public WorkflowHealthCheckComponent() {
+    this.setConsumer(new HttpRestWorkflowServicesConsumer());
+    this.setMessageTranslator(new DefaultSerializableMessageTranslator());
+    this.setMessageFactory(DefaultMessageFactory.getDefaultInstance());
+  }
 
-	private transient WorkflowTargetTranslator targetTranslator;
+  @Override
+  public void onAdaptrisMessage(AdaptrisMessage message) {
+    String pathValue = message.getMetadataValue(PATH_KEY);
+    String[] pathItem = pathValue.split("/");
+    String adapterName = pathItem.length > 2 ? pathItem[2] : null;
+    String channelName = pathItem.length > 3 ? pathItem[3] : null;
+    String workflowName = pathItem.length > 4 ? pathItem[4] : null;
 
-	private transient MBeanServer interlokMBeanServer;
+    try {
+      List<AdapterState> states = this.generateStateMap(adapterName, channelName, workflowName);
+      JSONArray jsonArray = new JSONArray(states);
+      message.setContent(jsonArray.toString(), message.getContentEncoding());
 
-	private transient AdaptrisMessageFactory messageFactory;
-	
-	private String configuredUrlPath;
+      this.getConsumer().doResponse(message, message);
+    } catch (Exception ex) {
+      try {
+        this.getConsumer().doErrorResponse(message, ex);
+      } catch (ServiceException e) {
+      }
+    }
 
-	public WorkflowHealthCheckComponent() {
-		this.setConsumer(new HttpRestWorkflowServicesConsumer());
-		this.setMessageTranslator(new DefaultSerializableMessageTranslator());
-		this.setMessageFactory(DefaultMessageFactory.getDefaultInstance());
-	}
+  }
+
+  private List<AdapterState> generateStateMap(String adapterName, String channelName, String workflowName)
+      throws Exception {
+    List<AdapterState> states = new ArrayList<>();
+    Set<ObjectInstance> adapterMBeans = this.getInterlokMBeanServer().queryMBeans(new ObjectName(ADAPTER_OBJ_TYPE_WILD),
+        null);
 
-	@Override
-	public void onAdaptrisMessage(AdaptrisMessage message) {
-		try {
-			this.healthPath(message);
-			this.completeHealthCheck(message);
-		} catch (ServiceException | OperationsException e) {
-			log.error(message.getContent());
-		}
+    adapterMBeans.forEach(adapterMBean -> {
+      try {
+        String adapterId = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), UNIQUE_ID);
 
-	}
+        if ((adapterName.equals(adapterId)) || (adapterName == null)) {
+          String adapterComponentState = getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), COMPONENT_STATE).getClass().getName();
+
+          AdapterState adapterState = new AdapterState();
+          adapterState.setId(adapterId);
+          adapterState.setState(adapterComponentState);
+
+          String channels = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
+          for (String channelObjectName : channels.split(",")) {
+            String channelId = (String) getInterlokMBeanServer().getAttribute(new ObjectName(channelObjectName), UNIQUE_ID);
+
+            if ((channelName.equals(channelId)) || (channelName == null)) {
+              String channelComponentState = getInterlokMBeanServer().getAttribute(new ObjectName(channelObjectName), COMPONENT_STATE).getClass().getName();
+
+              ChannelState channelState = new ChannelState();
+              channelState.setId(channelId);
+              channelState.setState(channelComponentState);
+
+              String workflows = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
+              for (String workflowObjectName : workflows.split(",")) {
+                String workflowId = (String) getInterlokMBeanServer().getAttribute(new ObjectName(workflowObjectName), UNIQUE_ID);
+
+                if ((workflowName.equals(workflowId)) || (workflowName == null)) {
+                  String workflowComponentState = getInterlokMBeanServer().getAttribute(new ObjectName(workflowObjectName), COMPONENT_STATE).getClass().getName();
 
-	private void healthPath(AdaptrisMessage message) {
-		String pathValue = message.getMetadataValue(PATH_KEY);
-		String[] pathItem = pathValue.split("/");
-		adapterName = pathItem.length > 2 ? pathItem[2] : null;
-		channelName = pathItem.length > 3 ? pathItem[3] : null;
-		workflowName = pathItem.length > 4 ? pathItem[4] : null;
-	}
+                  WorkflowState workflowState = new WorkflowState();
+                  workflowState.setId(channelId);
+                  workflowState.setState(workflowComponentState);
 
-	private String adapterName;
-
-	private String channelName;
-
-	private String workflowName;
-
-	private ObjectName adapterObjectName() throws OperationsException, ReflectionException, MBeanException {
-		if(adapterName != null) {
-			return new ObjectName(ADAPTER_OBJ_TYPE + "id=" + adapterName);
-		}
-		else {
-			Set<ObjectInstance> objectInstanceSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(ADAPTER_OBJ_TYPE_WILD), null);
-			return new ObjectName(ADAPTER_OBJ_TYPE + "id=" + this.getInterlokMBeanServer().getAttribute(objectInstanceSet.iterator().next().getObjectName(), UNIQUE_ID).toString());
-		}
-	}
-
-	private ObjectName channelObjectName() throws OperationsException {
-		return new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + channelName);
-	}
-
-	private ObjectName workflowObjectName() throws OperationsException {
-		return new ObjectName(WORKFLOW_OBJ_TYPE + "adapter=" + adapterName + ",channel=" + channelName + ",id=" + workflowName);
-	}
-
-	private Boolean childFreeAdapter() throws ReflectionException, MBeanException, OperationsException {
-		return adapterInstanceAttribute(CHILDREN_ATTRIBUTE).toString().equalsIgnoreCase("[]");
-	}
-
-	private Boolean childFreeChannel() throws ReflectionException, MBeanException, OperationsException {
-		return channelInstanceAttribute(CHILDREN_ATTRIBUTE).toString().equalsIgnoreCase("[]");
-	}
-
-	private Boolean invalidAdapterId() throws ReflectionException, MBeanException, OperationsException {
-		return adapterHealth().equalsIgnoreCase(INVALID_ADAPTER_ID);
-	}
-
-	private Boolean invalidChannelId() throws ReflectionException, MBeanException, OperationsException {
-		return channelHealth().equalsIgnoreCase(INVALID_CHANNEL_ID);
-	}
-
-	private Boolean invalidWorkflowId() throws ReflectionException, MBeanException, OperationsException {
-		return workflowHealth().equalsIgnoreCase(INVALID_WORKFLOW_ID);
-	}
-
-	private Object adapterInstanceAttribute(String attribute)	throws OperationsException, ReflectionException, MBeanException {
-		try { 
-			return this.getInterlokMBeanServer().getAttribute(adapterObjectName(), attribute);
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
-			return INVALID_ADAPTER_ID;
-		}
-	}
-
-	private Object channelInstanceAttribute(String attribute) throws OperationsException, ReflectionException, MBeanException {
-		return this.getInterlokMBeanServer().getAttribute(channelObjectName(), attribute);
-	}
-
-	private Object workflowInstanceAttribute(String attribute)	throws OperationsException, ReflectionException, MBeanException {
-		return this.getInterlokMBeanServer().getAttribute(workflowObjectName(), attribute);
-	}
-
-	private String adapterHealth() throws ReflectionException, MBeanException, OperationsException {
-
-		try {
-			String messageAdapterId = adapterInstanceAttribute(UNIQUE_ID).toString();
-			String adapterId = ("Adapter: " + adapterInstanceAttribute(UNIQUE_ID) + "\n").toString();
-			String adapterState = ("Adapter State: " + adapterInstanceAttribute(COMPONENT_STATE) + "\n").toString();
-			if (adapterName == null || adapterName.contains(messageAdapterId)) {
-				return adapterId + adapterState;
-			}else {
-				return INVALID_ADAPTER_ID;
-			}
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
-			return INVALID_ADAPTER_ID;
-		}
-	}
-
-	private String channelHealth() throws OperationsException, ReflectionException, MBeanException {
-		try {
-
-			String messageChannelId = channelInstanceAttribute(UNIQUE_ID).toString();
-			String channelId = ("\tChannel: " + channelInstanceAttribute(UNIQUE_ID) + "\n").toString();
-			String channelState = ("\tChannel State: " + channelInstanceAttribute(COMPONENT_STATE) + "\n").toString();
-
-			if (channelName.contains(messageChannelId)) {
-				return channelId + channelState;
-			} else {
-				return INVALID_CHANNEL_ID;
-			}
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
-			return INVALID_CHANNEL_ID;
-		}
-
-	}
-
-	private String workflowHealth() throws ReflectionException, MBeanException, OperationsException {
-		try {
-
-			String workflowId = ("\t\tWorkflow: " + workflowInstanceAttribute(UNIQUE_ID) + "\n").toString();
-			String workflowState = ("\t\tWorkflow State: " + workflowInstanceAttribute(COMPONENT_STATE) + "\n").toString();
-
-			if(channelInstanceAttribute(CHILDREN_ATTRIBUTE).toString().contains(workflowName.toString())) {
-				return workflowId + workflowState;
-			} else {
-				return INVALID_WORKFLOW_ID;
-			}
-		} catch (InstanceNotFoundException e) {
-			log.warn(e.toString());
-			return INVALID_WORKFLOW_ID;
-		}
-
-	}
-
-	private void adapterHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
-		StringBuilder builder = new StringBuilder();
-		builder.append(adapterHealth());
-		if(adapterInstanceAttribute(CHILDREN_ATTRIBUTE) != INVALID_ADAPTER_ID) {
-			if(!childFreeAdapter()) {
-				adapterName = adapterInstanceAttribute(UNIQUE_ID).toString();
-				TreeSet<ObjectName> adapterChildAttributes = (TreeSet<ObjectName>) (adapterInstanceAttribute(CHILDREN_ATTRIBUTE));
-				for (ObjectName adapterObject : adapterChildAttributes) {
-					if(!(this.getInterlokMBeanServer().getAttribute(new ObjectName (CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), CHILDREN_ATTRIBUTE)).toString().contains("[]")) {
-						builder.append("\tChannel: " + adapterObject.getKeyProperty("id") + "\n");
-						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
-						TreeSet<ObjectName> channelChildAttributes = (TreeSet<ObjectName>) this.getInterlokMBeanServer().getAttribute((new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id"))), CHILDREN_ATTRIBUTE);
-						for (ObjectName channelObject : channelChildAttributes) {				
-							builder.append("\t\tWorkflow: " + channelObject.getKeyProperty("id") + "\n");
-							builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(WORKFLOW_OBJ_TYPE + "adapter=" + adapterName + ",channel=" + adapterObject.getKeyProperty("id") + ",id=" + channelObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
-						}
-					}
-					else {
-						builder.append("\tChannel: " + adapterObject.getKeyProperty("id") + "\n");
-						builder.append("\tChannel State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(CHANNEL_OBJ_TYPE + "adapter=" + adapterName + ",id=" + adapterObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
-						builder.append("\tNo workflows were found for this channel. \n");
-					}
-				}
-
-			}
-			else {
-				builder.append("No channels or workflows were found for this channel. \n");
-			}
-		}
-		else {
-			invalidAdapterId();
-		}
-
-
-		message.setContent(builder.toString(), message.getContentEncoding());
-		this.getConsumer().doResponse(message, message);
-	}
-
-	private void channelHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
-
-		StringBuilder builder = new StringBuilder();
-
-		if (invalidAdapterId()) {
-			builder.append(adapterHealth());
-		} else if (invalidChannelId()) {
-			builder.append(adapterHealth());
-			builder.append(channelHealth());
-		} else {
-			if (!childFreeAdapter()) {
-				builder.append(adapterHealth());
-				if (!childFreeChannel()) {
-					builder.append(channelHealth());
-					TreeSet<ObjectName> channelChildAttributes = (TreeSet<ObjectName>) (channelInstanceAttribute(CHILDREN_ATTRIBUTE));
-					for (ObjectName channelObject : channelChildAttributes) {
-						builder.append("\t\tWorkflow: " + channelObject.getKeyProperty("id") + "\n");
-						builder.append("\t\tWorkflow State: " + this.getInterlokMBeanServer().getAttribute(new ObjectName(WORKFLOW_OBJ_TYPE + "adapter=" + adapterName + ",channel=" + channelName + ",id=" + channelObject.getKeyProperty("id")), COMPONENT_STATE) + "\n");
-					}
-				} else {
-					builder.append(channelHealth());
-					builder.append("\tNo workflows were found for this channel. \n");
-				}
-
-			} else {
-				builder.append("This adapter has no channels or workflows");
-			}
-		}
-		message.setContent(builder.toString(), message.getContentEncoding());
-		this.getConsumer().doResponse(message, message);
-	}
-
-	private void workflowHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException, ReflectionException, MBeanException {
-
-		StringBuilder builder = new StringBuilder();
-
-		builder.append(adapterHealth());
-		builder.append(channelHealth());
-		builder.append(workflowHealth());
-
-		message.setContent(builder.toString(), message.getContentEncoding());
-		this.getConsumer().doResponse(message, message);
-	}
-
-	private void completeHealthCheck(AdaptrisMessage message) throws ServiceException, OperationsException {
-
-		try {
-			if ((channelName == null)) {
-				adapterHealthCheck(message);
-
-			} else if (workflowName == null) {
-				channelHealthCheck(message);
-			} else {
-				workflowHealthCheck(message);
-			}
-			log.debug("Successfully retrieved health status.");
-
-		} catch (MalformedObjectNameException | MBeanException | AttributeNotFoundException | InstanceNotFoundException
-				| ReflectionException e) {
-			StringBuilder builder = new StringBuilder();
-			log.error("Failed to retrieve health status.", e);
-			builder.append(e.toString());
-			message.setContent(builder.toString(), message.getContentEncoding());
-			this.getConsumer().doErrorResponse(message, e);
-		}
-	}
-
-	@Override
-	public void init(Properties config) throws Exception {
-	  this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
-	}
-
-	@Override
-	public void start() throws Exception {
-	  WorkflowHealthCheckComponent instance = this;
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-				  if (getInterlokMBeanServer() == null)
-		            setInterlokMBeanServer(JmxHelper.findMBeanServer());
-
-    		        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-    		        getConsumer().setConsumedUrlPath(configuredUrlPath());
-    		        getConsumer().setMessageListener(instance);
-    		        getConsumer().prepare();
-    		        LifecycleHelper.init(getConsumer());
-					LifecycleHelper.start(getConsumer());
-
-					log.debug("Workflow REST services component started.");
-				} catch (CoreException e) {
-					log.error("Could not start the Workflow REST services component.", e);
-				}
-			}
-		}).start();
-
-	}
-
-	@Override
-	public void stop() throws Exception {
-		LifecycleHelper.stop(getConsumer());
-	}
-
-	@Override
-	public void destroy() throws Exception {
-		LifecycleHelper.close(getConsumer());
-	}
-
-	@Override
-	public String friendlyName() {
-		return this.getClass().getSimpleName();
-	}
-
-	public WorkflowServicesConsumer getConsumer() {
-		return consumer;
-	}
-
-	public void setConsumer(WorkflowServicesConsumer consumer) {
-		this.consumer = consumer;
-	}
-
-	public WorkflowTargetTranslator getTargetTranslator() {
-		return targetTranslator;
-	}
-
-	public void setTargetTranslator(WorkflowTargetTranslator targetTranslator) {
-		this.targetTranslator = targetTranslator;
-	}
-
-	public DefaultSerializableMessageTranslator getMessageTranslator() {
-		return messageTranslator;
-	}
-
-	public void setMessageTranslator(DefaultSerializableMessageTranslator messageTranslator) {
-		this.messageTranslator = messageTranslator;
-	}
-
-	public MBeanServer getInterlokMBeanServer() {
-		return interlokMBeanServer;
-	}
-
-	public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
-		this.interlokMBeanServer = interlokMBeanServer;
-	}
-
-	public AdaptrisMessageFactory getMessageFactory() {
-		return messageFactory;
-	}
-
-	public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
-		this.messageFactory = messageFactory;
-	}
-	
-	String configuredUrlPath() {
-	    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
-	}
-	  
-	public String getConfiguredUrlPath() {
-	    return configuredUrlPath;
-	}
-
-	public void setConfiguredUrlPath(String configuredUrlPath) {
-	    this.configuredUrlPath = configuredUrlPath;
-	}
+                  channelState.getWorkflowStates().add(workflowState);
+                }
+              }
+              adapterState.getChannelStates().add(channelState);
+            }
+          }
+          states.add(adapterState);
+        }
+      } catch (Exception ex) {
+        new RuntimeException(ex.getMessage());
+      }
+    });
+
+    return states;
+  }
+
+  @Override
+  public void init(Properties config) throws Exception {
+    this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
+  }
+
+  @Override
+  public void start() throws Exception {
+    WorkflowHealthCheckComponent instance = this;
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          if (getInterlokMBeanServer() == null)
+            setInterlokMBeanServer(JmxHelper.findMBeanServer());
+
+          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+          getConsumer().setConsumedUrlPath(configuredUrlPath());
+          getConsumer().setMessageListener(instance);
+          getConsumer().prepare();
+          LifecycleHelper.init(getConsumer());
+          LifecycleHelper.start(getConsumer());
+
+          log.debug("Workflow REST services component started.");
+        } catch (CoreException e) {
+          log.error("Could not start the Workflow REST services component.", e);
+        }
+      }
+    }).start();
+
+  }
+
+  @Override
+  public void stop() throws Exception {
+    LifecycleHelper.stop(getConsumer());
+  }
+
+  @Override
+  public void destroy() throws Exception {
+    LifecycleHelper.close(getConsumer());
+  }
+
+  @Override
+  public String friendlyName() {
+    return this.getClass().getSimpleName();
+  }
+
+  public WorkflowServicesConsumer getConsumer() {
+    return consumer;
+  }
+
+  public void setConsumer(WorkflowServicesConsumer consumer) {
+    this.consumer = consumer;
+  }
+
+  public WorkflowTargetTranslator getTargetTranslator() {
+    return targetTranslator;
+  }
+
+  public void setTargetTranslator(WorkflowTargetTranslator targetTranslator) {
+    this.targetTranslator = targetTranslator;
+  }
+
+  public DefaultSerializableMessageTranslator getMessageTranslator() {
+    return messageTranslator;
+  }
+
+  public void setMessageTranslator(DefaultSerializableMessageTranslator messageTranslator) {
+    this.messageTranslator = messageTranslator;
+  }
+
+  public MBeanServer getInterlokMBeanServer() {
+    return interlokMBeanServer;
+  }
+
+  public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
+    this.interlokMBeanServer = interlokMBeanServer;
+  }
+
+  public AdaptrisMessageFactory getMessageFactory() {
+    return messageFactory;
+  }
+
+  public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
+    this.messageFactory = messageFactory;
+  }
+
+  String configuredUrlPath() {
+    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
+  }
+
+  public String getConfiguredUrlPath() {
+    return configuredUrlPath;
+  }
+
+  public void setConfiguredUrlPath(String configuredUrlPath) {
+    this.configuredUrlPath = configuredUrlPath;
+  }
+
+  class AdapterState {
+    private String id;
+    private String state;
+    private List<ChannelState> channelStates;
+
+    public AdapterState() {
+      this.setChannelStates(new ArrayList<>());
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getState() {
+      return state;
+    }
+
+    public void setState(String state) {
+      this.state = state;
+    }
+
+    public List<ChannelState> getChannelStates() {
+      return channelStates;
+    }
+
+    public void setChannelStates(List<ChannelState> channelStates) {
+      this.channelStates = channelStates;
+    }
+
+  }
+
+  class ChannelState {
+    private String id;
+    private String state;
+    private List<WorkflowState> workflowStates;
+
+    public ChannelState() {
+      this.setWorkflowStates(new ArrayList<>());
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getState() {
+      return state;
+    }
+
+    public void setState(String state) {
+      this.state = state;
+    }
+
+    public List<WorkflowState> getWorkflowStates() {
+      return workflowStates;
+    }
+
+    public void setWorkflowStates(List<WorkflowState> workflowStates) {
+      this.workflowStates = workflowStates;
+    }
+  }
+
+  class WorkflowState {
+    private String id;
+    private String state;
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getState() {
+      return state;
+    }
+
+    public void setState(String state) {
+      this.state = state;
+    }
+  }
 
 }
