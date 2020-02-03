@@ -1,7 +1,11 @@
 package com.adaptris.rest;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -11,9 +15,7 @@ import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
-import junit.framework.TestCase;
-
-public class HttpRestWorkflowServicesConsumerTest extends TestCase {
+public class HttpRestWorkflowServicesConsumerTest {
   
   private static final String PATH = "/workflow-services/*";
   
@@ -27,6 +29,7 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
   
   @Mock private JettyResponseService mockResponseService;
   
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -35,10 +38,12 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     processedMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
   
+  @After
   public void tearDown() throws Exception {
     
   }
   
+  @Test
   public void testCreateStandardConsumer() throws Exception {
     StandaloneConsumer standaloneConsumer = servicesConsumer.configureConsumer(new AdaptrisMessageListener() {
       @Override
@@ -53,6 +58,7 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
   }
   
+  @Test
   public void testOkResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
     servicesConsumer.doResponse(originalMessage, processedMessage);
@@ -61,6 +67,7 @@ public class HttpRestWorkflowServicesConsumerTest extends TestCase {
     verify(mockResponseService).doService(processedMessage);
   }
 
+  @Test
   public void testErrorResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
     servicesConsumer.doErrorResponse(originalMessage, new Exception());

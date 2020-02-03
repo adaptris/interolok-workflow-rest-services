@@ -10,19 +10,23 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
 import org.apache.commons.lang.ObjectUtils;
-import org.codehaus.jettison.json.JSONArray;
 
 import com.adaptris.core.AdaptrisMessage;
-import com.adaptris.core.AdaptrisMessageFactory;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
-import com.adaptris.core.DefaultMessageFactory;
-import com.adaptris.core.DefaultSerializableMessageTranslator;
 import com.adaptris.core.ServiceException;
+import com.adaptris.core.XStreamJsonMarshaller;
 import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
+import com.adaptris.rest.healthcheck.AdapterState;
+import com.adaptris.rest.healthcheck.ChannelState;
+import com.adaptris.rest.healthcheck.WorkflowState;
+import com.thoughtworks.xstream.annotations.XStreamAlias;
 
+import lombok.Lombok;
+
+@XStreamAlias("health-check")
 public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
 
   private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
@@ -43,20 +47,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   private transient WorkflowServicesConsumer consumer;
 
-  private transient DefaultSerializableMessageTranslator messageTranslator;
-
-  private transient WorkflowTargetTranslator targetTranslator;
-
   private transient MBeanServer interlokMBeanServer;
-
-  private transient AdaptrisMessageFactory messageFactory;
 
   private String configuredUrlPath;
 
   public WorkflowHealthCheckComponent() {
     this.setConsumer(new HttpRestWorkflowServicesConsumer());
-    this.setMessageTranslator(new DefaultSerializableMessageTranslator());
-    this.setMessageFactory(DefaultMessageFactory.getDefaultInstance());
   }
 
   @Override
@@ -69,8 +65,8 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
     try {
       List<AdapterState> states = this.generateStateMap(adapterName, channelName, workflowName);
-      JSONArray jsonArray = new JSONArray(states);
-      message.setContent(jsonArray.toString(), message.getContentEncoding());
+      String jsonString = new XStreamJsonMarshaller().marshal(states);
+      message.setContent(jsonString, message.getContentEncoding());
 
       this.getConsumer().doResponse(message, message);
     } catch (Exception ex) {
@@ -82,6 +78,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   }
 
+  @SuppressWarnings("unchecked")
   private List<AdapterState> generateStateMap(String adapterName, String channelName, String workflowName)
       throws Exception {
     List<AdapterState> states = new ArrayList<>();
@@ -92,33 +89,33 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
       try {
         String adapterId = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), UNIQUE_ID);
 
-        if ((adapterName.equals(adapterId)) || (adapterName == null)) {
-          String adapterComponentState = getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), COMPONENT_STATE).getClass().getName();
+        if ((adapterName == null) || (adapterName.equals(adapterId))) {
+          String adapterComponentState = getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), COMPONENT_STATE).getClass().getSimpleName();
 
           AdapterState adapterState = new AdapterState();
           adapterState.setId(adapterId);
           adapterState.setState(adapterComponentState);
 
-          String channels = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
-          for (String channelObjectName : channels.split(",")) {
-            String channelId = (String) getInterlokMBeanServer().getAttribute(new ObjectName(channelObjectName), UNIQUE_ID);
+          Set<ObjectName> channels = (Set<ObjectName>) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
+          for (ObjectName channelObjectName : channels) {
+            String channelId = (String) getInterlokMBeanServer().getAttribute(channelObjectName, UNIQUE_ID);
 
-            if ((channelName.equals(channelId)) || (channelName == null)) {
-              String channelComponentState = getInterlokMBeanServer().getAttribute(new ObjectName(channelObjectName), COMPONENT_STATE).getClass().getName();
+            if ((channelName == null) || (channelName.equals(channelId))) {
+              String channelComponentState = getInterlokMBeanServer().getAttribute(channelObjectName, COMPONENT_STATE).getClass().getSimpleName();
 
               ChannelState channelState = new ChannelState();
               channelState.setId(channelId);
               channelState.setState(channelComponentState);
 
-              String workflows = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
-              for (String workflowObjectName : workflows.split(",")) {
-                String workflowId = (String) getInterlokMBeanServer().getAttribute(new ObjectName(workflowObjectName), UNIQUE_ID);
+              Set<ObjectName> workflows = (Set<ObjectName>) getInterlokMBeanServer().getAttribute(channelObjectName, CHILDREN_ATTRIBUTE);
+              for (ObjectName workflowObjectName : workflows) {
+                String workflowId = (String) getInterlokMBeanServer().getAttribute(workflowObjectName, UNIQUE_ID);
 
-                if ((workflowName.equals(workflowId)) || (workflowName == null)) {
-                  String workflowComponentState = getInterlokMBeanServer().getAttribute(new ObjectName(workflowObjectName), COMPONENT_STATE).getClass().getName();
+                if ((workflowName == null) || (workflowName.equals(workflowId))) {
+                  String workflowComponentState = getInterlokMBeanServer().getAttribute(workflowObjectName, COMPONENT_STATE).getClass().getSimpleName();
 
                   WorkflowState workflowState = new WorkflowState();
-                  workflowState.setId(channelId);
+                  workflowState.setId(workflowId);
                   workflowState.setState(workflowComponentState);
 
                   channelState.getWorkflowStates().add(workflowState);
@@ -130,7 +127,8 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
           states.add(adapterState);
         }
       } catch (Exception ex) {
-        new RuntimeException(ex.getMessage());
+        log.error("Could not check the health of the running instance.", ex);
+        throw Lombok.sneakyThrow(ex);
       }
     });
 
@@ -191,36 +189,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
     this.consumer = consumer;
   }
 
-  public WorkflowTargetTranslator getTargetTranslator() {
-    return targetTranslator;
-  }
-
-  public void setTargetTranslator(WorkflowTargetTranslator targetTranslator) {
-    this.targetTranslator = targetTranslator;
-  }
-
-  public DefaultSerializableMessageTranslator getMessageTranslator() {
-    return messageTranslator;
-  }
-
-  public void setMessageTranslator(DefaultSerializableMessageTranslator messageTranslator) {
-    this.messageTranslator = messageTranslator;
-  }
-
   public MBeanServer getInterlokMBeanServer() {
     return interlokMBeanServer;
   }
 
   public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
     this.interlokMBeanServer = interlokMBeanServer;
-  }
-
-  public AdaptrisMessageFactory getMessageFactory() {
-    return messageFactory;
-  }
-
-  public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
-    this.messageFactory = messageFactory;
   }
 
   String configuredUrlPath() {
@@ -233,96 +207,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   public void setConfiguredUrlPath(String configuredUrlPath) {
     this.configuredUrlPath = configuredUrlPath;
-  }
-
-  class AdapterState {
-    private String id;
-    private String state;
-    private List<ChannelState> channelStates;
-
-    public AdapterState() {
-      this.setChannelStates(new ArrayList<>());
-    }
-
-    public String getId() {
-      return id;
-    }
-
-    public void setId(String id) {
-      this.id = id;
-    }
-
-    public String getState() {
-      return state;
-    }
-
-    public void setState(String state) {
-      this.state = state;
-    }
-
-    public List<ChannelState> getChannelStates() {
-      return channelStates;
-    }
-
-    public void setChannelStates(List<ChannelState> channelStates) {
-      this.channelStates = channelStates;
-    }
-
-  }
-
-  class ChannelState {
-    private String id;
-    private String state;
-    private List<WorkflowState> workflowStates;
-
-    public ChannelState() {
-      this.setWorkflowStates(new ArrayList<>());
-    }
-
-    public String getId() {
-      return id;
-    }
-
-    public void setId(String id) {
-      this.id = id;
-    }
-
-    public String getState() {
-      return state;
-    }
-
-    public void setState(String state) {
-      this.state = state;
-    }
-
-    public List<WorkflowState> getWorkflowStates() {
-      return workflowStates;
-    }
-
-    public void setWorkflowStates(List<WorkflowState> workflowStates) {
-      this.workflowStates = workflowStates;
-    }
-  }
-
-  class WorkflowState {
-    private String id;
-    private String state;
-
-    public String getId() {
-      return id;
-    }
-
-    public void setId(String id) {
-      this.id = id;
-    }
-
-    public String getState() {
-      return state;
-    }
-
-    public void setState(String state) {
-      this.state = state;
-    }
   }
 
 }

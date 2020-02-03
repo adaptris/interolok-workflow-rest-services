@@ -2,15 +2,15 @@ package com.adaptris.rest;
 
 import static org.mockito.Mockito.verify;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.StandaloneConsumer;
 
-import junit.framework.TestCase;
-
-public class WorkflowServicesConsumerTest extends TestCase {
+public class WorkflowServicesConsumerTest {
   
   private WorkflowServicesConsumer servicesConsumer;
   
@@ -18,6 +18,7 @@ public class WorkflowServicesConsumerTest extends TestCase {
   
   @Mock private AdaptrisMessageListener mockMessageListener;
   
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -25,6 +26,7 @@ public class WorkflowServicesConsumerTest extends TestCase {
     servicesConsumer.setMessageListener(mockMessageListener);
   }
   
+  @Test
   public void testLifecycle() throws Exception {
     servicesConsumer.prepare();
     

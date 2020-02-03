@@ -1,8 +1,7 @@
 package com.adaptris.rest;
 
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,7 +14,11 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import static org.mockito.Matchers.any;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
@@ -24,9 +27,7 @@ import com.adaptris.core.SerializableAdaptrisMessage;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-import junit.framework.TestCase;
-
-public class WorkflowServicesComponentTest extends TestCase {
+public class WorkflowServicesComponentTest {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -58,6 +59,7 @@ public class WorkflowServicesComponentTest extends TestCase {
   
   private Set<ObjectInstance> mockReturnedWorkflows;
   
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -77,10 +79,12 @@ public class WorkflowServicesComponentTest extends TestCase {
     startComponent();
   }
   
+  @After
   public void tearDown() throws Exception {
     stopComponent();
   }
   
+  @Test
   public void testHappyPathMessageProcessed() throws Exception {
     message.addMessageHeader(PATH_KEY, "/workflow-services/myAdapter/myChannel/myWorkflow");
     
@@ -92,6 +96,7 @@ public class WorkflowServicesComponentTest extends TestCase {
     verify(mockConsumer).doResponse(any(), any());
   }
   
+  @Test
   public void testYamlDefRequest() throws Exception {
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     workflowServicesComponent.onAdaptrisMessage(message);
@@ -99,6 +104,7 @@ public class WorkflowServicesComponentTest extends TestCase {
     verify(mockJmxClient, times(0)).process(any(), any());
   }
   
+  @Test
   public void testProcessingWorkflowsDefinition() throws Exception {
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     message.addMessageHeader(HTTP_HEADER_HOST, "myHost:8080");
@@ -117,6 +123,7 @@ public class WorkflowServicesComponentTest extends TestCase {
     assertTrue(returnedMessage.getContent().contains("standard-workflow-2"));
   }
   
+  @Test
   public void testErrorResponse() throws Exception {
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/8/9");
     workflowServicesComponent.onAdaptrisMessage(message);
