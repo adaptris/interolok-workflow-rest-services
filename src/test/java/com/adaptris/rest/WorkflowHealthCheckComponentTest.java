@@ -140,6 +140,25 @@ public class WorkflowHealthCheckComponentTest {
   }
   
   @Test
+  public void testNoMBeans() throws Exception {    
+    message.addMessageHeader(PATH_KEY, "/workflow-health-check");
+    
+    doThrow(new Exception("Expected"))
+        .when(mockJmxHelper).getMBeans(any());
+    
+    healthCheck.onAdaptrisMessage(message);
+    
+ // Wait for 5 seconds, Fail if we don't get the received message after that time.
+    await()
+      .atMost(Durations.FIVE_SECONDS)
+    .with()
+      .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
+      .until(testConsumer::complete);
+    
+    assertFalse(testConsumer.isError);
+  }
+  
+  @Test
   public void testErrorFromMBean() throws Exception {
     healthCheck.setJmxMBeanHelper(mockJmxHelper);
     
