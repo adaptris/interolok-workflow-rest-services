@@ -88,7 +88,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
         String adapterId = this.getJmxMBeanHelper().getStringAttribute(adapterMBean.getObjectName().toString(), UNIQUE_ID);
 
         if ((adapterName == null) || (adapterName.equals(adapterId))) {
-          String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE).getClass().getSimpleName();
+          String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE);
 
           AdapterState adapterState = new AdapterState();
           adapterState.setId(adapterId);
