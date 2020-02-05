@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
@@ -17,10 +16,10 @@ import com.adaptris.core.CoreException;
 import com.adaptris.core.ServiceException;
 import com.adaptris.core.XStreamJsonMarshaller;
 import com.adaptris.core.management.MgmtComponentImpl;
-import com.adaptris.core.util.JmxHelper;
 import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
+import com.adaptris.rest.healthcheck.JmxMBeanHelper;
 import com.adaptris.rest.healthcheck.WorkflowState;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
@@ -46,13 +45,14 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
   private static final String PATH_KEY = "jettyURI";
 
   private transient WorkflowServicesConsumer consumer;
-
-  private transient MBeanServer interlokMBeanServer;
+  
+  private transient JmxMBeanHelper jmxMBeanHelper;
 
   private String configuredUrlPath;
 
   public WorkflowHealthCheckComponent() {
     this.setConsumer(new HttpRestWorkflowServicesConsumer());
+    this.setJmxMBeanHelper(new JmxMBeanHelper());
   }
 
   @Override
@@ -78,41 +78,39 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   }
 
-  @SuppressWarnings("unchecked")
   private List<AdapterState> generateStateMap(String adapterName, String channelName, String workflowName)
       throws Exception {
     List<AdapterState> states = new ArrayList<>();
-    Set<ObjectInstance> adapterMBeans = this.getInterlokMBeanServer().queryMBeans(new ObjectName(ADAPTER_OBJ_TYPE_WILD),
-        null);
+    Set<ObjectInstance> adapterMBeans = this.getJmxMBeanHelper().getMBeans(ADAPTER_OBJ_TYPE_WILD);
 
     adapterMBeans.forEach(adapterMBean -> {
       try {
-        String adapterId = (String) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), UNIQUE_ID);
+        String adapterId = this.getJmxMBeanHelper().getStringAttribute(adapterMBean.getObjectName().toString(), UNIQUE_ID);
 
         if ((adapterName == null) || (adapterName.equals(adapterId))) {
-          String adapterComponentState = getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), COMPONENT_STATE).getClass().getSimpleName();
+          String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE).getClass().getSimpleName();
 
           AdapterState adapterState = new AdapterState();
           adapterState.setId(adapterId);
           adapterState.setState(adapterComponentState);
 
-          Set<ObjectName> channels = (Set<ObjectName>) getInterlokMBeanServer().getAttribute(adapterMBean.getObjectName(), CHILDREN_ATTRIBUTE);
+          Set<ObjectName> channels = this.getJmxMBeanHelper().getObjectSetAttribute(adapterMBean.getObjectName().toString(), CHILDREN_ATTRIBUTE);
           for (ObjectName channelObjectName : channels) {
-            String channelId = (String) getInterlokMBeanServer().getAttribute(channelObjectName, UNIQUE_ID);
+            String channelId = this.getJmxMBeanHelper().getStringAttribute(channelObjectName.toString(), UNIQUE_ID);
 
             if ((channelName == null) || (channelName.equals(channelId))) {
-              String channelComponentState = getInterlokMBeanServer().getAttribute(channelObjectName, COMPONENT_STATE).getClass().getSimpleName();
+              String channelComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(channelObjectName.toString(), COMPONENT_STATE);
 
               ChannelState channelState = new ChannelState();
               channelState.setId(channelId);
               channelState.setState(channelComponentState);
 
-              Set<ObjectName> workflows = (Set<ObjectName>) getInterlokMBeanServer().getAttribute(channelObjectName, CHILDREN_ATTRIBUTE);
+              Set<ObjectName> workflows = this.getJmxMBeanHelper().getObjectSetAttribute(channelObjectName.toString(), CHILDREN_ATTRIBUTE);
               for (ObjectName workflowObjectName : workflows) {
-                String workflowId = (String) getInterlokMBeanServer().getAttribute(workflowObjectName, UNIQUE_ID);
+                String workflowId = this.getJmxMBeanHelper().getStringAttribute(workflowObjectName.toString(), UNIQUE_ID);
 
                 if ((workflowName == null) || (workflowName.equals(workflowId))) {
-                  String workflowComponentState = getInterlokMBeanServer().getAttribute(workflowObjectName, COMPONENT_STATE).getClass().getSimpleName();
+                  String workflowComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(workflowObjectName.toString(), COMPONENT_STATE);
 
                   WorkflowState workflowState = new WorkflowState();
                   workflowState.setId(workflowId);
@@ -147,9 +145,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
       @Override
       public void run() {
         try {
-          if (getInterlokMBeanServer() == null)
-            setInterlokMBeanServer(JmxHelper.findMBeanServer());
-
           getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
           getConsumer().setConsumedUrlPath(configuredUrlPath());
           getConsumer().setMessageListener(instance);
@@ -189,14 +184,6 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
     this.consumer = consumer;
   }
 
-  public MBeanServer getInterlokMBeanServer() {
-    return interlokMBeanServer;
-  }
-
-  public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
-    this.interlokMBeanServer = interlokMBeanServer;
-  }
-
   String configuredUrlPath() {
     return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
   }
@@ -207,6 +194,14 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   public void setConfiguredUrlPath(String configuredUrlPath) {
     this.configuredUrlPath = configuredUrlPath;
+  }
+
+  public JmxMBeanHelper getJmxMBeanHelper() {
+    return jmxMBeanHelper;
+  }
+
+  public void setJmxMBeanHelper(JmxMBeanHelper jmxMBeanHelper) {
+    this.jmxMBeanHelper = jmxMBeanHelper;
   }
 
 }

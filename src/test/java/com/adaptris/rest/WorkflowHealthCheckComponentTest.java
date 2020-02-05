@@ -2,14 +2,16 @@ package com.adaptris.rest;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
@@ -29,6 +31,7 @@ import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.StartedState;
 import com.adaptris.core.StoppedState;
 import com.adaptris.core.runtime.AdapterManager;
+import com.adaptris.rest.healthcheck.JmxMBeanHelper;
 
 public class WorkflowHealthCheckComponentTest {
   
@@ -70,13 +73,9 @@ public class WorkflowHealthCheckComponentTest {
   
   private TestConsumer testConsumer;
   
-  private InitialisedState initState;
-  private StartedState startedState;
-  private StoppedState stoppedState;
+  private ObjectName adapterObjectName;
   
-  @Mock private MBeanServer mockMBeanServer;
-  
-  @Mock private WorkflowServicesConsumer mockConsumer;
+  @Mock private JmxMBeanHelper mockJmxHelper;
   
   @Before
   public void setUp() throws Exception {
@@ -84,8 +83,8 @@ public class WorkflowHealthCheckComponentTest {
     
     message = DefaultMessageFactory.getDefaultInstance().newMessage();
     
-    
-    ObjectInstance adapterInstance = new ObjectInstance("com.adaptris:type=Adapter,id=" + ADAPTER_ID, AdapterManager.class.getName());
+    adapterObjectName = new ObjectName("com.adaptris:type=Adapter,id=" + ADAPTER_ID);
+    ObjectInstance adapterInstance = new ObjectInstance(adapterObjectName, AdapterManager.class.getName());
     adapterInstances = new HashSet<>();
     adapterInstances.add(adapterInstance);
     
@@ -100,33 +99,32 @@ public class WorkflowHealthCheckComponentTest {
     workflowObjectNames.add(workflowObjectName2);
     
     healthCheck = new WorkflowHealthCheckComponent();
-    healthCheck.setConsumer(mockConsumer);
     
-    when(mockMBeanServer.queryMBeans(any(), any()))
+    when(mockJmxHelper.getMBeans(any()))
         .thenReturn(adapterInstances);
-    when(mockMBeanServer.getAttribute(adapterInstance.getObjectName(), UNIQUE_ID))
+    when(mockJmxHelper.getStringAttribute(adapterObjectName.toString(), UNIQUE_ID))
         .thenReturn(ADAPTER_ID);
-    when(mockMBeanServer.getAttribute(adapterInstance.getObjectName(), COMPONENT_STATE))
-        .thenReturn(startedState);
-    when(mockMBeanServer.getAttribute(adapterInstance.getObjectName(), CHILDREN_ATTRIBUTE))
+    when(mockJmxHelper.getStringAttributeClassName(adapterObjectName.toString(), COMPONENT_STATE))
+        .thenReturn(StartedState.class.getSimpleName());
+    when(mockJmxHelper.getObjectSetAttribute(adapterObjectName.toString(), CHILDREN_ATTRIBUTE))
         .thenReturn(channelObjectNames);
     
-    when(mockMBeanServer.getAttribute(channelObjectName, UNIQUE_ID))
+    when(mockJmxHelper.getStringAttribute(channelObjectName.toString(), UNIQUE_ID))
         .thenReturn(CHANNEL_ID);
-    when(mockMBeanServer.getAttribute(channelObjectName, COMPONENT_STATE))
-        .thenReturn(startedState);
-    when(mockMBeanServer.getAttribute(channelObjectName, CHILDREN_ATTRIBUTE))
+    when(mockJmxHelper.getStringAttributeClassName(channelObjectName.toString(), COMPONENT_STATE))
+        .thenReturn(StartedState.class.getSimpleName());
+    when(mockJmxHelper.getObjectSetAttribute(channelObjectName.toString(), CHILDREN_ATTRIBUTE))
         .thenReturn(workflowObjectNames);
     
-    when(mockMBeanServer.getAttribute(workflowObjectName1, UNIQUE_ID))
+    when(mockJmxHelper.getStringAttribute(workflowObjectName1.toString(), UNIQUE_ID))
         .thenReturn(WORKFLOW_ID1);
-    when(mockMBeanServer.getAttribute(workflowObjectName1, COMPONENT_STATE))
-        .thenReturn(initState);
+    when(mockJmxHelper.getStringAttributeClassName(workflowObjectName1.toString(), COMPONENT_STATE))
+        .thenReturn(InitialisedState.class.getSimpleName());
     
-    when(mockMBeanServer.getAttribute(workflowObjectName2, UNIQUE_ID))
+    when(mockJmxHelper.getStringAttribute(workflowObjectName2.toString(), UNIQUE_ID))
         .thenReturn(WORKFLOW_ID2);
-    when(mockMBeanServer.getAttribute(workflowObjectName2, COMPONENT_STATE))
-        .thenReturn(stoppedState);
+    when(mockJmxHelper.getStringAttributeClassName(workflowObjectName2.toString(), COMPONENT_STATE))
+        .thenReturn(StoppedState.class.getSimpleName());
     
     testConsumer = new TestConsumer();
     healthCheck.setConsumer(testConsumer);
@@ -142,31 +140,56 @@ public class WorkflowHealthCheckComponentTest {
   }
   
   @Test
-  public void testNoMBeansNoError() throws Exception {
-    healthCheck.setInterlokMBeanServer(mockMBeanServer);
+  public void testErrorFromMBean() throws Exception {
+    healthCheck.setJmxMBeanHelper(mockJmxHelper);
+    
     message.addMessageHeader(PATH_KEY, "/workflow-health-check");
+    
+    doThrow(new Exception("Expected"))
+        .when(mockJmxHelper).getMBeans(any());
     
     healthCheck.onAdaptrisMessage(message);
     
  // Wait for 5 seconds, Fail if we don't get the received message after that time.
     await()
-      .atLeast(Durations.ONE_HUNDRED_MILLISECONDS)
       .atMost(Durations.FIVE_SECONDS)
     .with()
       .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
       .until(testConsumer::complete);
+    
+    assertTrue(testConsumer.isError);
+  }
+  
+  @Test
+  public void testErrorFromMBeanAttribute() throws Exception {
+    healthCheck.setJmxMBeanHelper(mockJmxHelper);
+    
+    message.addMessageHeader(PATH_KEY, "/workflow-health-check");
+    
+    doThrow(new Exception("Expected"))
+        .when(mockJmxHelper).getStringAttribute(any(), any());
+    
+    healthCheck.onAdaptrisMessage(message);
+    
+ // Wait for 5 seconds, Fail if we don't get the received message after that time.
+    await()
+      .atMost(Durations.FIVE_SECONDS)
+    .with()
+      .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
+      .until(testConsumer::complete);
+    
+    assertTrue(testConsumer.isError);
   }
   
   @Test
   public void testWrongAdapterIdEmptyPayload() throws Exception {
-    healthCheck.setInterlokMBeanServer(mockMBeanServer);
+    healthCheck.setJmxMBeanHelper(mockJmxHelper);
     message.addMessageHeader(PATH_KEY, "/workflow-health-check/does_not_exist");
     
     healthCheck.onAdaptrisMessage(message);
     
  // Wait for 5 seconds, Fail if we don't get the received message after that time.
     await()
-      .atLeast(Durations.ONE_HUNDRED_MILLISECONDS)
       .atMost(Durations.FIVE_SECONDS)
     .with()
       .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
@@ -177,20 +200,43 @@ public class WorkflowHealthCheckComponentTest {
   
   @Test
   public void testEverythingReturned() throws Exception {
-    healthCheck.setInterlokMBeanServer(mockMBeanServer);
+    healthCheck.setJmxMBeanHelper(mockJmxHelper);
     message.addMessageHeader(PATH_KEY, "/workflow-health-check");
     
     healthCheck.onAdaptrisMessage(message);
     
  // Wait for 5 seconds, Fail if we don't get the received message after that time.
     await()
-      .atLeast(Durations.ONE_HUNDRED_MILLISECONDS)
       .atMost(Durations.FIVE_SECONDS)
     .with()
       .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
       .until(testConsumer::complete);
     
-    assertEquals("{\"java.util.Collection\":[\"\"]}", testConsumer.payload);
+    assertTrue(testConsumer.payload.contains(ADAPTER_ID));
+    assertTrue(testConsumer.payload.contains(CHANNEL_ID));
+    assertTrue(testConsumer.payload.contains(WORKFLOW_ID1));
+    assertTrue(testConsumer.payload.contains(WORKFLOW_ID2));
+  }
+  
+  @Test
+  public void testSpecificWorkflowReturned() throws Exception {
+    healthCheck.setJmxMBeanHelper(mockJmxHelper);
+    message.addMessageHeader(PATH_KEY, "/workflow-health-check/" + ADAPTER_ID + "/" + CHANNEL_ID + "/" + WORKFLOW_ID1);
+    
+    healthCheck.onAdaptrisMessage(message);
+    
+ // Wait for 5 seconds, Fail if we don't get the received message after that time.
+    await()
+      .atMost(Durations.FIVE_SECONDS)
+    .with()
+      .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
+      .until(testConsumer::complete);
+    
+    assertTrue(testConsumer.payload.contains(ADAPTER_ID));
+    assertTrue(testConsumer.payload.contains(CHANNEL_ID));
+    assertTrue(testConsumer.payload.contains(WORKFLOW_ID1));
+    
+    assertFalse(testConsumer.payload.contains(WORKFLOW_ID2));
   }
   
   
@@ -218,5 +264,8 @@ public class WorkflowHealthCheckComponentTest {
       return isError == true || payload != null;
     }
     
+    public void prepare() {
+      
+    }
   }
 }
