@@ -141,24 +141,18 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
   @Override
   public void start() throws Exception {
     WorkflowHealthCheckComponent instance = this;
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-          getConsumer().setConsumedUrlPath(configuredUrlPath());
-          getConsumer().setMessageListener(instance);
-          getConsumer().prepare();
-          LifecycleHelper.init(getConsumer());
-          LifecycleHelper.start(getConsumer());
+    new Thread(() -> {
+      try {
+        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
+        getConsumer().setConsumedUrlPath(configuredUrlPath());
+        getConsumer().setMessageListener(instance);
+        LifecycleHelper.initAndStart(getConsumer());
 
-          log.debug("Workflow REST services component started.");
-        } catch (CoreException e) {
-          log.error("Could not start the Workflow REST services component.", e);
-        }
+        log.debug("Workflow REST services component started.");
+      } catch (CoreException e) {
+        log.error("Could not start the Workflow REST services component.", e);
       }
     }).start();
-
   }
 
   @Override
@@ -185,7 +179,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
   }
 
   String configuredUrlPath() {
-    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
+    return ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
   }
 
   public String getConfiguredUrlPath() {
