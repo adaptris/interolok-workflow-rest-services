@@ -8,24 +8,27 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.StandaloneConsumer;
 
-public class WorkflowServicesConsumerTest {
+public class WorkflowServicesConsumerTest extends BaseCase {
   
   private WorkflowServicesConsumer servicesConsumer;
   
   @Mock private StandaloneConsumer mockStandaloneConsumer;
   
   @Mock private AdaptrisMessageListener mockMessageListener;
-  
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
     servicesConsumer = new HttpRestWorkflowServicesConsumer();
     servicesConsumer.setMessageListener(mockMessageListener);
+    servicesConsumer.setAcceptedHttpMethods("POST,GET");
+    servicesConsumer.setConsumedUrlPath("/myPath/");
   }
-  
+
   @Test
   public void testLifecycle() throws Exception {
     servicesConsumer.prepare();
@@ -42,4 +45,8 @@ public class WorkflowServicesConsumerTest {
     verify(mockStandaloneConsumer).requestClose();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

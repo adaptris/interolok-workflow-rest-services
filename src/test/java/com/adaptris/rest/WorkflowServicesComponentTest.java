@@ -2,6 +2,7 @@ package com.adaptris.rest;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,12 +23,14 @@ import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
+import com.adaptris.core.BaseCase;
+import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.SerializableAdaptrisMessage;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-public class WorkflowServicesComponentTest {
+public class WorkflowServicesComponentTest extends BaseCase {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -58,7 +61,7 @@ public class WorkflowServicesComponentTest {
   private SerializableMessage mockSerMessage;
   
   private Set<ObjectInstance> mockReturnedWorkflows;
-  
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
@@ -75,17 +78,17 @@ public class WorkflowServicesComponentTest {
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_ONE), WORKFLOW_MANAGER_CLASS));
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), WORKFLOW_MANAGER_CLASS));
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), NOT_WORKFLOW_MANAGER_CLASS));
-    
-    startComponent();
   }
-  
+
   @After
   public void tearDown() throws Exception {
     stopComponent();
   }
-  
+
   @Test
   public void testHappyPathMessageProcessed() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/myAdapter/myChannel/myWorkflow");
     
     when(mockJmxClient.process(any(), any())).thenReturn(mockSerMessage);
@@ -95,17 +98,21 @@ public class WorkflowServicesComponentTest {
     verify(mockJmxClient).process(any(), any());
     verify(mockConsumer).doResponse(any(), any());
   }
-  
+
   @Test
   public void testYamlDefRequest() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     workflowServicesComponent.onAdaptrisMessage(message);
     
     verify(mockJmxClient, times(0)).process(any(), any());
   }
-  
+
   @Test
   public void testProcessingWorkflowsDefinition() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     message.addMessageHeader(HTTP_HEADER_HOST, "myHost:8080");
     workflowServicesComponent.setInterlokMBeanServer(mockMbeanServer);
@@ -122,9 +129,22 @@ public class WorkflowServicesComponentTest {
     assertTrue(returnedMessage.getContent().contains("standard-workflow-1"));
     assertTrue(returnedMessage.getContent().contains("standard-workflow-2"));
   }
-  
+
+  @Test
+  public void testInitFails() throws Exception {
+    doThrow(new CoreException("Expected"))
+        .when(mockConsumer).init();
+    
+    startComponent();
+    
+    // If the init fails, then start shuld not run.
+    verify(mockConsumer, times(0)).start();
+  }
+
   @Test
   public void testErrorResponse() throws Exception {
+    startComponent();
+    
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/8/9");
     workflowServicesComponent.onAdaptrisMessage(message);
     
@@ -142,4 +162,8 @@ public class WorkflowServicesComponentTest {
     workflowServicesComponent.destroy();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

@@ -12,7 +12,7 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
@@ -155,12 +155,11 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
           getConsumer().setConsumedUrlPath(configuredUrlPath());
           getConsumer().setMessageListener(instance);
           getConsumer().prepare();
-          LifecycleHelper.init(getConsumer());
-          LifecycleHelper.start(getConsumer());
+          LifecycleHelper.initAndStart(getConsumer());
           
           log.debug("Workflow REST services component started.");
         } catch (CoreException e) {
-          log.error("Could not start the Workflow REST services component.", e);
+          log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
         }
       }
     }).start();

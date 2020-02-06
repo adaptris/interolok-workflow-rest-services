@@ -11,11 +11,12 @@ import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
-public class HttpRestWorkflowServicesConsumerTest {
+public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
   
   private static final String PATH = "/workflow-services/*";
   
@@ -28,7 +29,7 @@ public class HttpRestWorkflowServicesConsumerTest {
   private AdaptrisMessage processedMessage;
   
   @Mock private JettyResponseService mockResponseService;
-  
+
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
@@ -37,12 +38,12 @@ public class HttpRestWorkflowServicesConsumerTest {
     originalMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
     processedMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
-  
+
   @After
   public void tearDown() throws Exception {
     
   }
-  
+
   @Test
   public void testCreateStandardConsumer() throws Exception {
     StandaloneConsumer standaloneConsumer = servicesConsumer.configureConsumer(new AdaptrisMessageListener() {
@@ -57,7 +58,7 @@ public class HttpRestWorkflowServicesConsumerTest {
     assertEquals(PATH, standaloneConsumer.getConsumer().getDestination().getDestination());
     assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
   }
-  
+
   @Test
   public void testOkResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
@@ -74,5 +75,10 @@ public class HttpRestWorkflowServicesConsumerTest {
     
     verify(mockResponseService).setHttpStatus("400");
     verify(mockResponseService).doService(originalMessage);
+  }
+
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
   }
 }

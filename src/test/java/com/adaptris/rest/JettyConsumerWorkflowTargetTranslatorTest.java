@@ -8,18 +8,19 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.interlok.client.MessageTarget;
 
-public class JettyConsumerWorkflowTargetTranslatorTest {
+public class JettyConsumerWorkflowTargetTranslatorTest extends BaseCase {
   
   private static final String PATH_KEY = "jettyURI";
   
   private AdaptrisMessage message;
   
   private JettyConsumerWorkflowTargetTranslator targetTranslator;
-  
+
   @Before
   public void setUp() throws Exception {
     targetTranslator = new JettyConsumerWorkflowTargetTranslator();
@@ -35,7 +36,7 @@ public class JettyConsumerWorkflowTargetTranslatorTest {
     assertEquals("myChannel", target.getChannel());
     assertEquals("myWorkflow", target.getWorkflow());
   }
-  
+
   @Test
   public void testRootReturnsNull() throws Exception{
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
@@ -43,14 +44,14 @@ public class JettyConsumerWorkflowTargetTranslatorTest {
     
     assertNull(target);
   }
-  
+
   @Test
   public void testNoPathMetadataReturnsNull() throws Exception{
     MessageTarget target = targetTranslator.translateTarget(message);
     
     assertNull(target);
   }
-  
+
   @Test
   public void testWrongNumberOfParams() throws Exception{
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/");
@@ -61,5 +62,9 @@ public class JettyConsumerWorkflowTargetTranslatorTest {
       // expected
     }
   }
-  
+
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

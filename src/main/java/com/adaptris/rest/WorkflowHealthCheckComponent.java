@@ -8,7 +8,7 @@ import java.util.Set;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
