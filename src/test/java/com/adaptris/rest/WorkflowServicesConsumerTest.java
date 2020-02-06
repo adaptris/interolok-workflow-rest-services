@@ -2,16 +2,14 @@ package com.adaptris.rest;
 
 import static org.mockito.Mockito.verify;
 
-import com.adaptris.core.BaseCase;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.StandaloneConsumer;
-
-import junit.framework.TestCase;
 
 public class WorkflowServicesConsumerTest extends BaseCase {
   

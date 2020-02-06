@@ -3,7 +3,6 @@ package com.adaptris.rest;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
-import com.adaptris.core.BaseCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -12,11 +11,10 @@ import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
-
-import junit.framework.TestCase;
 
 public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
   

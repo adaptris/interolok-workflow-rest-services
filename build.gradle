@@ -9,6 +9,7 @@ plugins {
   // Manage optional dependencies in maven pom.
   id 'nebula.optional-base' version '5.0.3'
   id 'com.github.spotbugs' version '3.0.0'
+  id "io.freefair.lombok" version "4.1.6"
 }
 
 ext {
@@ -86,6 +87,7 @@ ext.buildInfo = { ->
 sourceCompatibility = 1.8
 group   = 'com.adaptris'
 version = releaseVersion
+generateLombokConfig.enabled = false
 def versionDir = "$buildDir/version"
 
 repositories {
@@ -137,6 +139,7 @@ dependencies {
   testCompile ('junit:junit:4.13')
   testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing= true}
   testCompile ("org.mockito:mockito-all:1.10.19")
+  testCompile ("org.awaitility:awaitility:4.0.2")
 
   javadoc("com.adaptris:interlok-core-apt:$interlokCoreVersion") { changing= true}
   offlineJavadocPackages ("com.adaptris:interlok-core:$interlokCoreVersion:javadoc@jar") { changing= true}
