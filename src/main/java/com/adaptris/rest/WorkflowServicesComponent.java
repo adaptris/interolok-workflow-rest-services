@@ -28,51 +28,51 @@ import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
 public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
-      
+
   private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
-  
+
   private static final String BOOTSTRAP_PATH_KEY = "rest.workflow-services.path";
-  
+
   private static final String DEFAULT_PATH = "/workflow-services/*";
-  
+
   private static final String ACCEPTED_FILTER = "POST,GET";
-  
+
   private static final String DEF_HEADER = "META-INF/definition-header.yaml";
-  
+
   private static final String DEF_WORKFLOW = "META-INF/definition-workflow.yaml";
-  
+
   private static final String WORKFLOW_MANAGER = "com.adaptris.core.runtime.WorkflowManager";
-  
+
   private static final String HOST_PLACEHOLDER = "{host}";
-  
+
   private static final String ADAPTER_PLACEHOLDER = "{adapter}";
-  
+
   private static final String CHANNEL_PLACEHOLDER = "{channel}";
-  
+
   private static final String WORKFLOW_PLACEHOLDER = "{id}";
-  
+
   private static final String OBJECT_PROPERTY_ADAPTER = "adapter";
-  
+
   private static final String OBJECT_PROPERTY_CHANNEL = "channel";
-  
+
   private static final String OBJECT_PROPERTY_WORKFLOW = "id";
-  
+
   private static final String HTTP_HEADER_HOST = "http.header.Host";
-  
+
   private transient WorkflowServicesConsumer consumer;
-  
+
   private transient DefaultSerializableMessageTranslator messageTranslator;
-  
+
   private transient InterlokJmxClient jmxClient;
-  
+
   private transient WorkflowTargetTranslator targetTranslator;
-    
+
   private transient MBeanServer interlokMBeanServer;
-  
+
   private transient AdaptrisMessageFactory messageFactory;
-  
+
   private String configuredUrlPath;
-  
+
   public WorkflowServicesComponent() {
     this.setConsumer(new HttpRestWorkflowServicesConsumer());
     this.setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
@@ -82,14 +82,14 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   }
 
   @Override
-  public void onAdaptrisMessage(AdaptrisMessage message) {
+  public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
     log.debug("Processing incoming message {}", message.getUniqueId());
-    
+
     try {
       MessageTarget translateTarget = this.getTargetTranslator().translateTarget(message);
       if(translateTarget != null) {
         SerializableMessage processedMessage = this.getJmxClient().process(translateTarget, this.getMessageTranslator().translate(message));
-      
+
         AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
         this.getConsumer().doResponse(message, responseMessage);
 
@@ -108,7 +108,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
     StringBuilder definition = new StringBuilder();
 
     AdaptrisMessage responseMessage = this.getMessageFactory().newMessage();
-    
+
     if(this.getInterlokMBeanServer() == null)
       this.setInterlokMBeanServer(JmxHelper.findMBeanServer());
 
@@ -123,22 +123,22 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
         definition.append(personalizedWorkflowDef(readResourceAsString(DEF_WORKFLOW, responseMessage.getContentEncoding()), instance.getObjectName()));
       }
     }
-    
+
     responseMessage.setContent(definition.toString().replace(HOST_PLACEHOLDER, host), responseMessage.getContentEncoding());
     return responseMessage;
   }
-  
+
   private String readResourceAsString(String resourceName, String contentEncoding) throws IOException {
     InputStream resourceBody = this.getClass().getClassLoader().getResourceAsStream(resourceName);
     return IOUtils.toString(resourceBody, contentEncoding);
   }
-  
+
   private String personalizedWorkflowDef(String rawDef, ObjectName objectName) {
     return rawDef.replace(ADAPTER_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_ADAPTER))
         .replace(CHANNEL_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_CHANNEL))
         .replace(WORKFLOW_PLACEHOLDER, objectName.getKeyProperty(OBJECT_PROPERTY_WORKFLOW));
   }
-  
+
   @Override
   public void init(Properties config) throws Exception {
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
@@ -156,14 +156,14 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
           getConsumer().setMessageListener(instance);
           getConsumer().prepare();
           LifecycleHelper.initAndStart(getConsumer());
-          
+
           log.debug("Workflow REST services component started.");
         } catch (CoreException e) {
           log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
         }
       }
     }).start();
-    
+
   }
 
   @Override
@@ -232,7 +232,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   String configuredUrlPath() {
     return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
   }
-  
+
   public String getConfiguredUrlPath() {
     return configuredUrlPath;
   }

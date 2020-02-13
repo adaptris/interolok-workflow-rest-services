@@ -45,7 +45,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
   private static final String PATH_KEY = "jettyURI";
 
   private transient WorkflowServicesConsumer consumer;
-  
+
   private transient JmxMBeanHelper jmxMBeanHelper;
 
   private String configuredUrlPath;
@@ -56,7 +56,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
   }
 
   @Override
-  public void onAdaptrisMessage(AdaptrisMessage message) {
+  public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
     String pathValue = message.getMetadataValue(PATH_KEY);
     String[] pathItem = pathValue.split("/");
     String adapterName = pathItem.length > 2 ? pathItem[2] : null;
