@@ -31,7 +31,7 @@ import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.StartedState;
 import com.adaptris.core.StoppedState;
 import com.adaptris.core.runtime.AdapterManager;
-import com.adaptris.rest.healthcheck.JmxMBeanHelper;
+import com.adaptris.rest.util.JmxMBeanHelper;
 
 public class WorkflowHealthCheckComponentTest {
   

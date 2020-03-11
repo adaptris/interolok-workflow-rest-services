@@ -1,8 +1,10 @@
-package com.adaptris.rest.healthcheck;
+package com.adaptris.rest.util;
 
 import java.util.Set;
 
+import javax.management.JMX;
 import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
@@ -21,6 +23,10 @@ public class JmxMBeanHelper {
   
   public String getStringAttributeClassName(String objectName, String attributeName) throws Exception {
     return (String) mBeanServer().getAttribute(new ObjectName(objectName), attributeName).getClass().getSimpleName();
+  }
+  
+  public <T> T proxyMBean(String objectNameString, Class<T> type) throws MalformedObjectNameException {
+    return (T) JMX.newMBeanProxy(mBeanServer(), new ObjectName(objectNameString), type, true);
   }
   
   @SuppressWarnings("unchecked")

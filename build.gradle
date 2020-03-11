@@ -132,6 +132,8 @@ dependencies {
 
   compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") { changing= true}
   compile ("com.adaptris:interlok-client:$interlokCoreVersion") { changing= true}
+  
+  compile  ("com.adaptris:interlok-cluster-manager:$interlokCoreVersion") { changing= true}
 
   annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion") {changing= true}
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
