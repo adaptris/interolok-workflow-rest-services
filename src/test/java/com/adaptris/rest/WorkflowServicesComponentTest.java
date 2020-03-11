@@ -1,8 +1,7 @@
 package com.adaptris.rest;
 
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -16,19 +15,22 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import static org.mockito.Matchers.any;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.SerializableAdaptrisMessage;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-import junit.framework.TestCase;
-
-public class WorkflowServicesComponentTest extends TestCase {
+public class WorkflowServicesComponentTest extends BaseCase {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -59,7 +61,8 @@ public class WorkflowServicesComponentTest extends TestCase {
   private SerializableMessage mockSerMessage;
   
   private Set<ObjectInstance> mockReturnedWorkflows;
-  
+
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -76,11 +79,13 @@ public class WorkflowServicesComponentTest extends TestCase {
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), WORKFLOW_MANAGER_CLASS));
     mockReturnedWorkflows.add(new ObjectInstance(new ObjectName(WORKFLOW_OBJECT_TWO), NOT_WORKFLOW_MANAGER_CLASS));
   }
-  
+
+  @After
   public void tearDown() throws Exception {
     stopComponent();
   }
-  
+
+  @Test
   public void testHappyPathMessageProcessed() throws Exception {
     startComponent();
     
@@ -93,7 +98,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     verify(mockJmxClient).process(any(), any());
     verify(mockConsumer).doResponse(any(), any());
   }
-  
+
+  @Test
   public void testYamlDefRequest() throws Exception {
     startComponent();
     
@@ -102,7 +108,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     
     verify(mockJmxClient, times(0)).process(any(), any());
   }
-  
+
+  @Test
   public void testProcessingWorkflowsDefinition() throws Exception {
     startComponent();
     
@@ -122,7 +129,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     assertTrue(returnedMessage.getContent().contains("standard-workflow-1"));
     assertTrue(returnedMessage.getContent().contains("standard-workflow-2"));
   }
-  
+
+  @Test
   public void testInitFails() throws Exception {
     doThrow(new CoreException("Expected"))
         .when(mockConsumer).init();
@@ -132,7 +140,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     // If the init fails, then start shuld not run.
     verify(mockConsumer, times(0)).start();
   }
-  
+
+  @Test
   public void testErrorResponse() throws Exception {
     startComponent();
     
@@ -153,4 +162,8 @@ public class WorkflowServicesComponentTest extends TestCase {
     workflowServicesComponent.destroy();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

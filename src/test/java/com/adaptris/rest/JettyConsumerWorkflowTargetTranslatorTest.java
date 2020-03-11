@@ -1,25 +1,33 @@
 package com.adaptris.rest;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.interlok.client.MessageTarget;
 
-import junit.framework.TestCase;
-
-public class JettyConsumerWorkflowTargetTranslatorTest extends TestCase {
+public class JettyConsumerWorkflowTargetTranslatorTest extends BaseCase {
   
   private static final String PATH_KEY = "jettyURI";
   
   private AdaptrisMessage message;
   
   private JettyConsumerWorkflowTargetTranslator targetTranslator;
-  
+
+  @Before
   public void setUp() throws Exception {
     targetTranslator = new JettyConsumerWorkflowTargetTranslator();
     message = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
 
+  @Test
   public void testFullPathToWorkflow() throws Exception{
     message.addMessageHeader(PATH_KEY, "/workflow-services/myAdapter/myChannel/myWorkflow");
     MessageTarget target = targetTranslator.translateTarget(message);
@@ -28,20 +36,23 @@ public class JettyConsumerWorkflowTargetTranslatorTest extends TestCase {
     assertEquals("myChannel", target.getChannel());
     assertEquals("myWorkflow", target.getWorkflow());
   }
-  
+
+  @Test
   public void testRootReturnsNull() throws Exception{
     message.addMessageHeader(PATH_KEY, "/workflow-services/");
     MessageTarget target = targetTranslator.translateTarget(message);
     
     assertNull(target);
   }
-  
+
+  @Test
   public void testNoPathMetadataReturnsNull() throws Exception{
     MessageTarget target = targetTranslator.translateTarget(message);
     
     assertNull(target);
   }
-  
+
+  @Test
   public void testWrongNumberOfParams() throws Exception{
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/");
     try {
@@ -51,5 +62,9 @@ public class JettyConsumerWorkflowTargetTranslatorTest extends TestCase {
       // expected
     }
   }
-  
+
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }

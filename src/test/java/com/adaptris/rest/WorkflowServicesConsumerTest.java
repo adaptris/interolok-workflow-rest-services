@@ -2,22 +2,24 @@ package com.adaptris.rest;
 
 import static org.mockito.Mockito.verify;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import com.adaptris.core.AdaptrisMessageListener;
+import com.adaptris.core.BaseCase;
 import com.adaptris.core.StandaloneConsumer;
 
-import junit.framework.TestCase;
-
-public class WorkflowServicesConsumerTest extends TestCase {
+public class WorkflowServicesConsumerTest extends BaseCase {
   
   private WorkflowServicesConsumer servicesConsumer;
   
   @Mock private StandaloneConsumer mockStandaloneConsumer;
   
   @Mock private AdaptrisMessageListener mockMessageListener;
-  
+
+  @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     
@@ -26,7 +28,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
     servicesConsumer.setAcceptedHttpMethods("POST,GET");
     servicesConsumer.setConsumedUrlPath("/myPath/");
   }
-  
+
+  @Test
   public void testLifecycle() throws Exception {
     servicesConsumer.prepare();
     
@@ -42,4 +45,8 @@ public class WorkflowServicesConsumerTest extends TestCase {
     verify(mockStandaloneConsumer).requestClose();
   }
 
+  @Override
+  public boolean isAnnotatedForJunit4() {
+    return true;
+  }
 }
