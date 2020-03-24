@@ -11,22 +11,18 @@ import javax.management.ObjectName;
 import org.apache.commons.lang3.ObjectUtils;
 
 import com.adaptris.core.AdaptrisMessage;
-import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.CoreException;
 import com.adaptris.core.ServiceException;
 import com.adaptris.core.XStreamJsonMarshaller;
-import com.adaptris.core.management.MgmtComponentImpl;
-import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
-import com.adaptris.rest.healthcheck.JmxMBeanHelper;
 import com.adaptris.rest.healthcheck.WorkflowState;
+import com.adaptris.rest.util.JmxMBeanHelper;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
 import lombok.Lombok;
 
 @XStreamAlias("health-check")
-public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
+public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
 
@@ -44,14 +40,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   private static final String PATH_KEY = "jettyURI";
 
-  private transient WorkflowServicesConsumer consumer;
-
   private transient JmxMBeanHelper jmxMBeanHelper;
 
   private String configuredUrlPath;
 
   public WorkflowHealthCheckComponent() {
-    this.setConsumer(new HttpRestWorkflowServicesConsumer());
+    super();
     this.setJmxMBeanHelper(new JmxMBeanHelper());
   }
 
@@ -135,55 +129,12 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   @Override
   public void init(Properties config) throws Exception {
+    super.init(config);
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
-  @Override
-  public void start() throws Exception {
-    WorkflowHealthCheckComponent instance = this;
-    new Thread(() -> {
-      try {
-        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-        getConsumer().setConsumedUrlPath(configuredUrlPath());
-        getConsumer().setMessageListener(instance);
-        LifecycleHelper.initAndStart(getConsumer());
-
-        log.debug("Workflow REST services component started.");
-      } catch (CoreException e) {
-        log.error("Could not start the Workflow REST services component.", e);
-      }
-    }).start();
-  }
-
-  @Override
-  public void stop() throws Exception {
-    LifecycleHelper.stop(getConsumer());
-  }
-
-  @Override
-  public void destroy() throws Exception {
-    LifecycleHelper.close(getConsumer());
-  }
-
-  @Override
-  public String friendlyName() {
-    return this.getClass().getSimpleName();
-  }
-
-  public WorkflowServicesConsumer getConsumer() {
-    return consumer;
-  }
-
-  public void setConsumer(WorkflowServicesConsumer consumer) {
-    this.consumer = consumer;
-  }
-
-  String configuredUrlPath() {
-    return ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
-  }
-
   public String getConfiguredUrlPath() {
-    return configuredUrlPath;
+    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
   }
 
   public void setConfiguredUrlPath(String configuredUrlPath) {
@@ -196,6 +147,11 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   public void setJmxMBeanHelper(JmxMBeanHelper jmxMBeanHelper) {
     this.jmxMBeanHelper = jmxMBeanHelper;
+  }
+
+  @Override
+  protected String getAcceptedFilter() {
+    return ACCEPTED_FILTER;
   }
 
 }

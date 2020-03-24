@@ -22,6 +22,8 @@ ext {
   repoPassword = project.hasProperty('repoPassword') ? project.getProperty('repoPassword') : 'unknown'
   defaultNexusRepo = project.hasProperty('defaultNexusRepo') ? project.getProperty('defaultNexusRepo') : 'https://repo1.maven.org/maven2/'
 
+  delombokTargetDir = new File("${project.projectDir}/src/main/generated")
+
   offlineJavadocPackageDir = new File(project.buildDir, "offline-javadoc-packages")
   interlokJavadocs= project.hasProperty('interlokJavadocs') ? project.getProperty('interlokJavadocs') : javadocsBaseUrl + "/interlok-core/" + interlokCoreVersion
   interlokCommonJavadocs= project.hasProperty('interlokJavadocs') ? project.getProperty('interlokJavadocs') : javadocsBaseUrl + "/interlok-common/" + interlokCoreVersion
@@ -137,6 +139,8 @@ dependencies {
 
   compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") { changing= true}
   compile ("com.adaptris:interlok-client:$interlokCoreVersion") { changing= true}
+  
+  compile  ("com.adaptris:interlok-cluster-manager:$interlokCoreVersion") { changing= true}
 
   annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion") {changing= true}
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
@@ -327,6 +331,26 @@ spotbugsMain {
 // disable spotbugsTests which checks our test code..
 spotbugsTest.enabled = false
 
+
+delombok {
+  target = delombokTargetDir
+}
+
+task lgtmCompile(type: JavaCompile, dependsOn: delombok) {
+  group 'Build'
+  description 'Compile for lgtm'
+
+  source = sourceSets.main.extensions.delombokTask
+  destinationDir = sourceSets.main.java.outputDir
+  classpath = project.sourceSets.main.compileClasspath
+}
+
+
+task deleteGeneratedFiles(type: Delete) {
+  delete 'activemq-data'
+  delete 'data'
+  delete delombokTargetDir
+}
 
 check.dependsOn jacocoTestReport
 processTestResources.dependsOn copyUnitTestProperties

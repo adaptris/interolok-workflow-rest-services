@@ -16,18 +16,14 @@ import org.apache.commons.lang3.ObjectUtils;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
-import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.DefaultSerializableMessageTranslator;
-import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.JmxHelper;
-import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
+public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
   private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
 
@@ -59,8 +55,6 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   private static final String HTTP_HEADER_HOST = "http.header.Host";
 
-  private transient WorkflowServicesConsumer consumer;
-
   private transient DefaultSerializableMessageTranslator messageTranslator;
 
   private transient InterlokJmxClient jmxClient;
@@ -74,7 +68,6 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
   private String configuredUrlPath;
 
   public WorkflowServicesComponent() {
-    this.setConsumer(new HttpRestWorkflowServicesConsumer());
     this.setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
     this.setJmxClient(new InterlokJmxClient());
     this.setMessageTranslator(new DefaultSerializableMessageTranslator());
@@ -141,52 +134,8 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   @Override
   public void init(Properties config) throws Exception {
+    super.init(config);
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
-  }
-
-  @Override
-  public void start() throws Exception {
-    WorkflowServicesComponent instance = this;
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-          getConsumer().setConsumedUrlPath(configuredUrlPath());
-          getConsumer().setMessageListener(instance);
-          getConsumer().prepare();
-          LifecycleHelper.initAndStart(getConsumer());
-
-          log.debug("Workflow REST services component started.");
-        } catch (CoreException e) {
-          log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
-        }
-      }
-    }).start();
-
-  }
-
-  @Override
-  public void stop() throws Exception {
-    LifecycleHelper.stop(getConsumer());
-  }
-
-  @Override
-  public void destroy() throws Exception {
-    LifecycleHelper.close(getConsumer());
-  }
-
-  @Override
-  public String friendlyName() {
-    return this.getClass().getSimpleName();
-  }
-
-  public WorkflowServicesConsumer getConsumer() {
-    return consumer;
-  }
-
-  public void setConsumer(WorkflowServicesConsumer consumer) {
-    this.consumer = consumer;
   }
 
   public WorkflowTargetTranslator getTargetTranslator() {
@@ -229,16 +178,17 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
     this.messageFactory = messageFactory;
   }
 
-  String configuredUrlPath() {
-    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
-  }
-
   public String getConfiguredUrlPath() {
-    return configuredUrlPath;
+    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
   }
 
   public void setConfiguredUrlPath(String configuredUrlPath) {
     this.configuredUrlPath = configuredUrlPath;
+  }
+
+  @Override
+  protected String getAcceptedFilter() {
+    return ACCEPTED_FILTER;
   }
 
 }
