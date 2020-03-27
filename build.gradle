@@ -356,5 +356,5 @@ task deleteGeneratedFiles(type: Delete) {
 
 check.dependsOn jacocoTestReport
 processTestResources.dependsOn copyUnitTestProperties
-clean.dependsOn deleteUnitTestProperties
+clean.dependsOn deleteUnitTestProperties,deleteGeneratedFiles
 javadoc.dependsOn offlinePackageList,umlJavadoc
