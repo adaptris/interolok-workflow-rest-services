@@ -1,7 +1,6 @@
 package com.adaptris.rest;
 
 import java.util.Properties;
-
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.management.MgmtComponentImpl;
@@ -31,7 +30,7 @@ public abstract class AbstractRestfulEndpoint extends MgmtComponentImpl implemen
 
         log.debug(friendlyName() + " component started.");
       } catch (CoreException e) {
-        log.error("Could not start the Cluster Manager REST services component.", e);
+        log.error("Could not start [{}]", friendlyName(), e);
       }
     }).start();
   }

@@ -29,4 +29,4 @@ bin
 gradle.properties
 unit-tests.properties
 /.gradle/
-*/src/main/generated
+src/main/generated
