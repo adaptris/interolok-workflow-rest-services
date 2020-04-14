@@ -1,7 +1,6 @@
 package com.adaptris.rest;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.ConfiguredConsumeDestination;
@@ -13,8 +12,7 @@ import com.adaptris.core.http.jetty.JettyMessageConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 import com.adaptris.core.http.jetty.MetadataHeaderHandler;
 import com.adaptris.core.http.jetty.MetadataParameterHandler;
-import com.adaptris.core.http.jetty.MetadataResponseHeaderProvider;
-import com.adaptris.core.metadata.NoOpMetadataFilter;
+import com.adaptris.core.http.jetty.NoOpResponseHeaderProvider;
 
 public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   
@@ -33,11 +31,7 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   
   @Override
   protected StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods) {
-    MetadataResponseHeaderProvider metadataResponseHeaderProvider = new MetadataResponseHeaderProvider();
-    metadataResponseHeaderProvider.setFilter(new NoOpMetadataFilter());
-    
-    this.setResponseService(new JettyResponseService());
-    this.getResponseService().setResponseHeaderProvider(metadataResponseHeaderProvider);
+    this.setResponseService(new JettyResponseService().withResponseHeaderProvider(new NoOpResponseHeaderProvider()));
     
     EmbeddedConnection jettyConnection = new EmbeddedConnection();
     JettyMessageConsumer messageConsumer = new JettyMessageConsumer();
