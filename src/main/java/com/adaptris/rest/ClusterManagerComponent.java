@@ -1,20 +1,22 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
 import org.apache.commons.lang3.ObjectUtils;
-
+import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.CoreException;
-import com.adaptris.core.ServiceException;
 import com.adaptris.core.XStreamJsonMarshaller;
 import com.adaptris.mgmt.cluster.ClusterInstance;
 import com.adaptris.mgmt.cluster.mbean.ClusterManagerMBean;
 import com.adaptris.rest.util.JmxMBeanHelper;
+import lombok.Getter;
+import lombok.Setter;
 
 public class ClusterManagerComponent extends AbstractRestfulEndpoint {
+
 
   private static final String BOOTSTRAP_PATH_KEY = "rest.cluster-manager.path";
 
@@ -24,8 +26,11 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
 
   private static final String CLUSTER_MANAGER_OBJECT_NAME = "com.adaptris:type=ClusterManager,id=ClusterManager";
   
+  @Getter
+  @Setter
   private transient JmxMBeanHelper jmxMBeanHelper;
 
+  @Setter
   private String configuredUrlPath;
 
   public ClusterManagerComponent () {
@@ -36,6 +41,8 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
     try {
+      MDC.put(MDC_KEY, friendlyName());
+
       ClusterManagerMBean clusterManager = this.getJmxMBeanHelper().proxyMBean(CLUSTER_MANAGER_OBJECT_NAME, ClusterManagerMBean.class);
       
       final List<ClusterInstance> clusterInstances = new ArrayList<ClusterInstance>();
@@ -49,10 +56,9 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
       
       this.getConsumer().doResponse(message, message);
     } catch (Exception ex) {
-      try {
-        this.getConsumer().doErrorResponse(message, ex);
-      } catch (ServiceException e) {
-      }
+      sendErrorResponseQuietly(getConsumer(), message, ex);
+    } finally {
+      MDC.remove(MDC_KEY);
     }
   }
 
@@ -62,20 +68,9 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
+  @Override
   public String getConfiguredUrlPath() {
     return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
-  }
-
-  public void setConfiguredUrlPath(String configuredUrlPath) {
-    this.configuredUrlPath = configuredUrlPath;
-  }
-
-  public JmxMBeanHelper getJmxMBeanHelper() {
-    return jmxMBeanHelper;
-  }
-
-  public void setJmxMBeanHelper(JmxMBeanHelper jmxMBeanHelper) {
-    this.jmxMBeanHelper = jmxMBeanHelper;
   }
 
   @Override

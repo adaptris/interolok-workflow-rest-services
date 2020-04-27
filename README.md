@@ -6,6 +6,8 @@ REST style API for Interlok.
 
 ## Health-Check
 
+* As of 3.10.1 this will add a mapped diagnostic context entry of `WorkflowHealthCheckComponent` against the key `ManagementComponent`; you can use this to filter your log file.
+
 Allows you to see a status (started, stopped, etc) of all Interlok channels and workflows in JSON form.
 
 ### Installation
@@ -17,6 +19,7 @@ managementComponents=jetty:jmx:health-check
 Optionally, you can also set the property named __rest.health-check.path__, which directly affects the REST API URL path.  The default value is; "__/workflow-health-check/*__".
 
 ### Running
+
 
 Using your favourite HTTP GET/POST tool, make a GET request to the running Interlok instance;
 ```
@@ -69,6 +72,8 @@ Below is an example of the resulting JSON.
 
 ## Cluster Manager
 
+* As of 3.10.1 this will add a mapped diagnostic context entry of `ClusterManagerComponent` against the key `ManagementComponent`; you can use this to filter your log file.
+
 Allows you to see a full list of known Interlok cluster instances in this instances cluster; JSON formatted.
 
 ### Installation
@@ -83,6 +88,7 @@ The __cluster__ component enables basic clustering, __cluster-rest__ enables que
 Optionally, you can also set the property named __rest.cluster-manager.path__, which directly affects the REST API URL path.  The default value is; "__/cluster-manager/*__".
 
 ### Running
+
 
 Using your favourite HTTP GET/POST tool, make a GET request to the running Interlok instance;
 ```
@@ -110,16 +116,11 @@ Below is an example of the resulting JSON.
 
 ## Workflow Rest Services
 
+* As of 3.10.1 this will add a mapped diagnostic context entry of `WorkflowServicesComponent` against the key `ManagementComponent`; you can use this to filter your log file.
 
 ### Installation
 
 Drop the __interlok-workflow-rest-services.jar__ built from this project in to your Interlok __lib__ directory along with the following __interlok-jmx.jar__ and __interlok-jmx-client.jar__.
-
-You can obtain these jars either by;
-
-- building from source from our public github.
-- downloading from our public nexus; [Public Nexus](https://nexus.adaptris.net/nexus/content/repositories/releases/com/adaptris/)
-- contacting our support team
 
 Then modify your __bootstrap.properties__ to make sure the managementComponents property contains all of "__jetty__", "__jmx__" and "__rest__".
 ```

@@ -3,17 +3,14 @@ package com.adaptris.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
-
 import org.junit.Before;
 import org.junit.Test;
-
 import com.adaptris.core.AdaptrisMessage;
-import com.adaptris.core.BaseCase;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.interlok.client.MessageTarget;
 
-public class JettyConsumerWorkflowTargetTranslatorTest extends BaseCase {
+public class JettyConsumerWorkflowTargetTranslatorTest {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -63,8 +60,4 @@ public class JettyConsumerWorkflowTargetTranslatorTest extends BaseCase {
     }
   }
 
-  @Override
-  public boolean isAnnotatedForJunit4() {
-    return true;
-  }
 }

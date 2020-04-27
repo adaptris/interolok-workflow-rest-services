@@ -1,25 +1,24 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.apache.commons.lang3.ObjectUtils;
-
+import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
-import com.adaptris.core.ServiceException;
 import com.adaptris.core.XStreamJsonMarshaller;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
 import com.adaptris.rest.healthcheck.WorkflowState;
 import com.adaptris.rest.util.JmxMBeanHelper;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
-
+import lombok.Getter;
 import lombok.Lombok;
+import lombok.Setter;
 
 @XStreamAlias("health-check")
 public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
@@ -40,8 +39,11 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   private static final String PATH_KEY = "jettyURI";
 
+  @Getter
+  @Setter
   private transient JmxMBeanHelper jmxMBeanHelper;
 
+  @Setter
   private String configuredUrlPath;
 
   public WorkflowHealthCheckComponent() {
@@ -51,6 +53,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+    MDC.put(MDC_KEY, friendlyName()); // this is arguably redundant because it's added in the consumer...
     String pathValue = message.getMetadataValue(PATH_KEY);
     String[] pathItem = pathValue.split("/");
     String adapterName = pathItem.length > 2 ? pathItem[2] : null;
@@ -64,10 +67,9 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
       this.getConsumer().doResponse(message, message);
     } catch (Exception ex) {
-      try {
-        this.getConsumer().doErrorResponse(message, ex);
-      } catch (ServiceException e) {
-      }
+      sendErrorResponseQuietly(getConsumer(), message, ex);
+    } finally {
+      MDC.remove(MDC_KEY);
     }
 
   }
@@ -81,7 +83,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
       try {
         String adapterId = this.getJmxMBeanHelper().getStringAttribute(adapterMBean.getObjectName().toString(), UNIQUE_ID);
 
-        if ((adapterName == null) || (adapterName.equals(adapterId))) {
+        if (adapterName == null || adapterName.equals(adapterId)) {
           String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE);
 
           AdapterState adapterState = new AdapterState();
@@ -92,7 +94,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
           for (ObjectName channelObjectName : channels) {
             String channelId = this.getJmxMBeanHelper().getStringAttribute(channelObjectName.toString(), UNIQUE_ID);
 
-            if ((channelName == null) || (channelName.equals(channelId))) {
+            if (channelName == null || channelName.equals(channelId)) {
               String channelComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(channelObjectName.toString(), COMPONENT_STATE);
 
               ChannelState channelState = new ChannelState();
@@ -103,7 +105,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
               for (ObjectName workflowObjectName : workflows) {
                 String workflowId = this.getJmxMBeanHelper().getStringAttribute(workflowObjectName.toString(), UNIQUE_ID);
 
-                if ((workflowName == null) || (workflowName.equals(workflowId))) {
+                if (workflowName == null || workflowName.equals(workflowId)) {
                   String workflowComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(workflowObjectName.toString(), COMPONENT_STATE);
 
                   WorkflowState workflowState = new WorkflowState();
@@ -133,20 +135,9 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
+  @Override
   public String getConfiguredUrlPath() {
     return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
-  }
-
-  public void setConfiguredUrlPath(String configuredUrlPath) {
-    this.configuredUrlPath = configuredUrlPath;
-  }
-
-  public JmxMBeanHelper getJmxMBeanHelper() {
-    return jmxMBeanHelper;
-  }
-
-  public void setJmxMBeanHelper(JmxMBeanHelper jmxMBeanHelper) {
-    this.jmxMBeanHelper = jmxMBeanHelper;
   }
 
   @Override

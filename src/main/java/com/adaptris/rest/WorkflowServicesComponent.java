@@ -1,19 +1,18 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
-
+import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
 import com.adaptris.core.DefaultMessageFactory;
@@ -22,6 +21,8 @@ import com.adaptris.core.util.JmxHelper;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
+import lombok.Getter;
+import lombok.Setter;
 
 public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
@@ -55,16 +56,27 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
   private static final String HTTP_HEADER_HOST = "http.header.Host";
 
+  @Getter
+  @Setter
   private transient DefaultSerializableMessageTranslator messageTranslator;
 
+  @Getter
+  @Setter
   private transient InterlokJmxClient jmxClient;
 
+  @Getter
+  @Setter
   private transient WorkflowTargetTranslator targetTranslator;
 
+  @Getter
+  @Setter
   private transient MBeanServer interlokMBeanServer;
 
+  @Getter
+  @Setter
   private transient AdaptrisMessageFactory messageFactory;
 
+  @Setter
   private String configuredUrlPath;
 
   public WorkflowServicesComponent() {
@@ -76,6 +88,7 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+    MDC.put(MDC_KEY, friendlyName());
     log.debug("Processing incoming message {}", message.getUniqueId());
 
     try {
@@ -92,9 +105,9 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
       }
     } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
-      try {
-        this.getConsumer().doErrorResponse(message, e);
-      } catch (Exception silent) {}
+      sendErrorResponseQuietly(getConsumer(), message, e);
+    } finally {
+      MDC.remove(MDC_KEY);
     }
   }
   private AdaptrisMessage generateDefinitionFile(String host) throws IOException, MalformedObjectNameException {
@@ -138,52 +151,9 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
-  public WorkflowTargetTranslator getTargetTranslator() {
-    return targetTranslator;
-  }
-
-  public void setTargetTranslator(WorkflowTargetTranslator targetTranslator) {
-    this.targetTranslator = targetTranslator;
-  }
-
-  public DefaultSerializableMessageTranslator getMessageTranslator() {
-    return messageTranslator;
-  }
-
-  public void setMessageTranslator(DefaultSerializableMessageTranslator messageTranslator) {
-    this.messageTranslator = messageTranslator;
-  }
-
-  public InterlokJmxClient getJmxClient() {
-    return jmxClient;
-  }
-
-  public void setJmxClient(InterlokJmxClient jmxClient) {
-    this.jmxClient = jmxClient;
-  }
-
-  public MBeanServer getInterlokMBeanServer() {
-    return interlokMBeanServer;
-  }
-
-  public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
-    this.interlokMBeanServer = interlokMBeanServer;
-  }
-
-  public AdaptrisMessageFactory getMessageFactory() {
-    return messageFactory;
-  }
-
-  public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
-    this.messageFactory = messageFactory;
-  }
-
+  @Override
   public String getConfiguredUrlPath() {
     return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
-  }
-
-  public void setConfiguredUrlPath(String configuredUrlPath) {
-    this.configuredUrlPath = configuredUrlPath;
   }
 
   @Override

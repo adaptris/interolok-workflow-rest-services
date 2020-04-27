@@ -5,14 +5,19 @@ import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.LifecycleHelper;
+import lombok.Getter;
+import lombok.Setter;
 
 public abstract class AbstractRestfulEndpoint extends MgmtComponentImpl implements AdaptrisMessageListener {
+  public static final String MDC_KEY = "ManagementComponent";
+
+  @Getter
+  @Setter
+  private transient WorkflowServicesConsumer consumer;
 
   public AbstractRestfulEndpoint() {
-    this.setConsumer(new HttpRestWorkflowServicesConsumer());
+    this.setConsumer(new HttpRestWorkflowServicesConsumer(friendlyName()));
   }
-  
-  private transient WorkflowServicesConsumer consumer;
   
   @Override
   public void init(Properties config) throws Exception {
@@ -28,7 +33,7 @@ public abstract class AbstractRestfulEndpoint extends MgmtComponentImpl implemen
         getConsumer().setMessageListener(instance);
         LifecycleHelper.initAndStart(getConsumer());
 
-        log.debug(friendlyName() + " component started.");
+        log.debug("{} component started.", friendlyName());
       } catch (CoreException e) {
         log.error("Could not start [{}]", friendlyName(), e);
       }
@@ -47,20 +52,11 @@ public abstract class AbstractRestfulEndpoint extends MgmtComponentImpl implemen
   @Override
   public void stop() throws Exception {
     LifecycleHelper.stop(getConsumer());
-    
-    log.debug(friendlyName() + " component stopped.");
+    log.debug("{} component stopped.", friendlyName());
   }
 
   @Override
   public void destroy() throws Exception {
     LifecycleHelper.close(getConsumer());
-  }
-  
-  public WorkflowServicesConsumer getConsumer() {
-    return consumer;
-  }
-
-  public void setConsumer(WorkflowServicesConsumer consumer) {
-    this.consumer = consumer;
   }
 }
