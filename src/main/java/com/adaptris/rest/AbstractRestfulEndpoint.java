@@ -33,7 +33,7 @@ public abstract class AbstractRestfulEndpoint extends MgmtComponentImpl implemen
         getConsumer().setMessageListener(instance);
         LifecycleHelper.initAndStart(getConsumer());
 
-        log.debug(friendlyName() + " component started.");
+        log.debug("{} component started.", friendlyName());
       } catch (CoreException e) {
         log.error("Could not start [{}]", friendlyName(), e);
       }
