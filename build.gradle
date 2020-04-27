@@ -297,6 +297,8 @@ publishing {
         def properties = asNode().appendNode("properties")
         properties.appendNode("target", "3.8.0+")
         properties.appendNode("tags", "rest")
+        properties.appendNode("readme", "https://github.com/adaptris/interlok-workflow-rest-services/raw/develop/README.md")
+        properties.appendNode("repository", "https://github.com/adaptris/interlok-workflow-rest-services")
       }
     }
   }
