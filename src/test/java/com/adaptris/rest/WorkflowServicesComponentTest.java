@@ -144,7 +144,7 @@ public class WorkflowServicesComponentTest {
     workflowServicesComponent.onAdaptrisMessage(message);
     
     verify(mockJmxClient, times(0)).process(any(), any());
-    verify(mockConsumer).doErrorResponse(any(), any());
+    verify(mockConsumer).doErrorResponse(any(), any(), any());
   }
   
   private void startComponent() throws Exception {

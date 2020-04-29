@@ -3,6 +3,7 @@ package com.adaptris.rest;
 import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import javax.management.ObjectInstance;
@@ -11,6 +12,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.XStreamJsonMarshaller;
+import com.adaptris.rest.healthcheck.AdapterList;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
 import com.adaptris.rest.healthcheck.WorkflowState;
@@ -62,10 +64,10 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
     try {
       List<AdapterState> states = this.generateStateMap(adapterName, channelName, workflowName);
-      String jsonString = new XStreamJsonMarshaller().marshal(states);
+      String jsonString = new XStreamJsonMarshaller().marshal(AdapterList.wrap(states));
       message.setContent(jsonString, message.getContentEncoding());
 
-      this.getConsumer().doResponse(message, message);
+      this.getConsumer().doResponse(message, message, HttpRestWorkflowServicesConsumer.CONTENT_TYPE_JSON);
     } catch (Exception ex) {
       sendErrorResponseQuietly(getConsumer(), message, ex);
     } finally {
@@ -83,7 +85,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
       try {
         String adapterId = this.getJmxMBeanHelper().getStringAttribute(adapterMBean.getObjectName().toString(), UNIQUE_ID);
 
-        if (adapterName == null || adapterName.equals(adapterId)) {
+        if (equalsOrNull(adapterName, adapterId)) {
           String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE);
 
           AdapterState adapterState = new AdapterState();
@@ -94,7 +96,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
           for (ObjectName channelObjectName : channels) {
             String channelId = this.getJmxMBeanHelper().getStringAttribute(channelObjectName.toString(), UNIQUE_ID);
 
-            if (channelName == null || channelName.equals(channelId)) {
+            if (equalsOrNull(channelName, channelId)) {
               String channelComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(channelObjectName.toString(), COMPONENT_STATE);
 
               ChannelState channelState = new ChannelState();
@@ -105,17 +107,17 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
               for (ObjectName workflowObjectName : workflows) {
                 String workflowId = this.getJmxMBeanHelper().getStringAttribute(workflowObjectName.toString(), UNIQUE_ID);
 
-                if (workflowName == null || workflowName.equals(workflowId)) {
+                if (equalsOrNull(workflowName, workflowId)) {
                   String workflowComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(workflowObjectName.toString(), COMPONENT_STATE);
 
                   WorkflowState workflowState = new WorkflowState();
                   workflowState.setId(workflowId);
                   workflowState.setState(workflowComponentState);
 
-                  channelState.getWorkflowStates().add(workflowState);
+                  channelState.applyDefaultIfNull().add(workflowState);
                 }
               }
-              adapterState.getChannelStates().add(channelState);
+              adapterState.applyDefaultIfNull().add(channelState);
             }
           }
           states.add(adapterState);
@@ -145,4 +147,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
     return ACCEPTED_FILTER;
   }
 
+  private static boolean equalsOrNull(String value, String expected) {
+    return Optional.ofNullable(value).map((v) -> v.equals(expected)).orElse(Boolean.TRUE);
+  }
 }

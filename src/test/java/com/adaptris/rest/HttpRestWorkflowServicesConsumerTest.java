@@ -67,7 +67,7 @@ public class HttpRestWorkflowServicesConsumerTest {
   @Test
   public void testErrorResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
-    servicesConsumer.doErrorResponse(originalMessage, new Exception());
+    servicesConsumer.doErrorResponse(originalMessage, new Exception(), null);
 
     verify(mockResponseService).doService(originalMessage);
   }
