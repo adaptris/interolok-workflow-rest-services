@@ -18,6 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor
 public abstract class WorkflowServicesConsumer implements ComponentLifecycle, ComponentLifecycleExtension {
 
+
+  public static final String CONTENT_TYPE_DEFAULT = "text/plain";
+  public static final String CONTENT_TYPE_JSON = "application/json";
+
   @Getter
   @Setter
   private StandaloneConsumer standaloneConsumer;
@@ -44,9 +48,14 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
     
   protected abstract StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods);
   
-  protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException;
+  protected void doResponse(AdaptrisMessage original, AdaptrisMessage processed) throws ServiceException {
+    doResponse(original, processed, CONTENT_TYPE_DEFAULT);
+  }
+
+  protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
+      throws ServiceException;
   
-  public abstract void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException;
+  public abstract void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException;
 
   @Override
   public void prepare() throws CoreException {
@@ -74,12 +83,15 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
     LifecycleHelper.close(getStandaloneConsumer());
   }
   
-  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e) {
+  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e, String contentType) {
     try {
-      Args.notNull(c, "workflow-services-consumer").doErrorResponse(msg, e);
+      Args.notNull(c, "workflow-services-consumer").doErrorResponse(msg, e, contentType);
     } catch (Exception exc) {
       log.trace("Ignored exception during error response {}", exc.getMessage());
     }
   }
 
+  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e) {
+    sendErrorResponseQuietly(c, msg, e, CONTENT_TYPE_DEFAULT);
+  }
 }

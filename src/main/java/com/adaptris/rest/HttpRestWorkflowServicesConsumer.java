@@ -5,6 +5,7 @@ import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
@@ -23,12 +24,14 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
-  
+
+
   private static final String OK_200 = "200";
   
   private static final String ERROR_400 = "400";
   
-  private static final String METADATA_STATUS = "httpStatus";
+  private static final String METADATA_STATUS = "httpReplyStatus";
+  private static final String METADATA_CONTENT_TYPE = "httpReplyContentType";
 
   private static final String HEADER_PREFIX = "http.header.";
   
@@ -49,7 +52,7 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   @Override
   protected StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods) {
     this.setResponseService(new JettyResponseService().withResponseHeaderProvider(new NoOpResponseHeaderProvider())
-        .withHttpStatus("%message{httpStatus}"));
+        .withHttpStatus("%message{httpReplyStatus}").withContentType("%message{httpReplyContentType}"));
     
     EmbeddedConnection jettyConnection = new EmbeddedConnection();
     JettyMessageConsumer messageConsumer = new JettyMessageConsumer() {
@@ -73,16 +76,19 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
   }
 
   @Override
-  protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException {
+  protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
+      throws ServiceException {
     processedMessage.addObjectHeader(JettyConstants.JETTY_WRAPPER, originalMessage.getObjectHeaders().get(JettyConstants.JETTY_WRAPPER));
     processedMessage.addMetadata(METADATA_STATUS, OK_200);
+    processedMessage.addMetadata(METADATA_CONTENT_TYPE, StringUtils.defaultIfBlank(contentType, CONTENT_TYPE_DEFAULT));
     this.getResponseService().doService(processedMessage);
   }
 
   @Override
-  public void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException {
+  public void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException {
     message.setContent(ExceptionUtils.getStackTrace(e), message.getContentEncoding());
     message.addMetadata(METADATA_STATUS, ERROR_400);
+    message.addMetadata(METADATA_CONTENT_TYPE, StringUtils.defaultIfBlank(contentType, CONTENT_TYPE_DEFAULT));
     this.getResponseService().doService(message);
   }
 }

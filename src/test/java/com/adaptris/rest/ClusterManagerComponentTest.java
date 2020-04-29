@@ -5,20 +5,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
-
 import javax.management.MalformedObjectNameException;
-
 import org.awaitility.Durations;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.DefaultMessageFactory;
@@ -169,12 +165,14 @@ public class ClusterManagerComponentTest {
     }
 
     @Override
-    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException {
+    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
+        throws ServiceException {
       payload = processedMessage.getContent();
     }
 
+
     @Override
-    public void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException {
+    public void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException {
       isError = true;
     }
     
@@ -182,6 +180,7 @@ public class ClusterManagerComponentTest {
       return isError == true || payload != null;
     }
     
+    @Override
     public void prepare() {
       
     }

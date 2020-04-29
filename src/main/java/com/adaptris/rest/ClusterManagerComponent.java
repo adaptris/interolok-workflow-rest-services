@@ -54,7 +54,7 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
       String jsonString = new XStreamJsonMarshaller().marshal(clusterInstances);
       message.setContent(jsonString, message.getContentEncoding());
       
-      this.getConsumer().doResponse(message, message);
+      this.getConsumer().doResponse(message, message, HttpRestWorkflowServicesConsumer.CONTENT_TYPE_JSON);
     } catch (Exception ex) {
       sendErrorResponseQuietly(getConsumer(), message, ex);
     } finally {

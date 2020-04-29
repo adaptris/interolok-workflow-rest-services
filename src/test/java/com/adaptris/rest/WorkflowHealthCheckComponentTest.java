@@ -7,21 +7,17 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.awaitility.Durations;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.DefaultMessageFactory;
@@ -213,8 +209,7 @@ public class WorkflowHealthCheckComponentTest {
     .with()
       .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
       .until(testConsumer::complete);
-    
-    assertEquals("{\"java.util.Collection\":[\"\"]}", testConsumer.payload);
+    assertEquals("{\"adapters\":[\"\"]}", testConsumer.payload);
   }
   
   @Test
@@ -230,7 +225,6 @@ public class WorkflowHealthCheckComponentTest {
     .with()
       .pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
       .until(testConsumer::complete);
-    
     assertTrue(testConsumer.payload.contains(ADAPTER_ID));
     assertTrue(testConsumer.payload.contains(CHANNEL_ID));
     assertTrue(testConsumer.payload.contains(WORKFLOW_ID1));
@@ -270,12 +264,14 @@ public class WorkflowHealthCheckComponentTest {
     }
 
     @Override
-    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage) throws ServiceException {
+    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
+        throws ServiceException {
       payload = processedMessage.getContent();
     }
 
+
     @Override
-    public void doErrorResponse(AdaptrisMessage message, Exception e) throws ServiceException {
+    public void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException {
       isError = true;
     }
     
@@ -283,6 +279,7 @@ public class WorkflowHealthCheckComponentTest {
       return isError == true || payload != null;
     }
     
+    @Override
     public void prepare() {
       
     }
