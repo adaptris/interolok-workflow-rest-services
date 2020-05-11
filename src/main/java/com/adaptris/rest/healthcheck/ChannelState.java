@@ -2,40 +2,29 @@ package com.adaptris.rest.healthcheck;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import com.thoughtworks.xstream.annotations.XStreamAlias;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @XStreamAlias("channel-state")
-public class ChannelState {
-  private String id;
-  private String state;
+@NoArgsConstructor
+public class ChannelState extends State {
+  // Defaults to "null" to avoid [""] as the output; better for it to be not present rather than
+  // the wrong type?
+  @Getter
+  @Setter
   private List<WorkflowState> workflowStates;
 
-  public ChannelState() {
-    this.setWorkflowStates(new ArrayList<>());
+  public ChannelState withWorkflowStates(List<WorkflowState> states) {
+    setWorkflowStates(states);
+    return this;
   }
 
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
-  }
-
-  public String getState() {
-    return state;
-  }
-
-  public void setState(String state) {
-    this.state = state;
-  }
-
-  public List<WorkflowState> getWorkflowStates() {
-    return workflowStates;
-  }
-
-  public void setWorkflowStates(List<WorkflowState> workflowStates) {
-    this.workflowStates = workflowStates;
+  public List<WorkflowState> applyDefaultIfNull() {
+    if (getWorkflowStates() == null) {
+      return withWorkflowStates(new ArrayList<>()).getWorkflowStates();
+    }
+    return getWorkflowStates();
   }
 }

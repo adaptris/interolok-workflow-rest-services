@@ -2,21 +2,18 @@ package com.adaptris.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.BaseCase;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
-public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
+public class HttpRestWorkflowServicesConsumerTest {
 
   private static final String PATH = "/workflow-services/*";
 
@@ -34,7 +31,7 @@ public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    servicesConsumer = new HttpRestWorkflowServicesConsumer();
+    servicesConsumer = new HttpRestWorkflowServicesConsumer("HttpRestWorkflowServicesConsumerTest");
     originalMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
     processedMessage = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
@@ -64,21 +61,14 @@ public class HttpRestWorkflowServicesConsumerTest extends BaseCase {
     servicesConsumer.setResponseService(mockResponseService);
     servicesConsumer.doResponse(originalMessage, processedMessage);
 
-    verify(mockResponseService).setHttpStatus("200");
     verify(mockResponseService).doService(processedMessage);
   }
 
   @Test
   public void testErrorResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
-    servicesConsumer.doErrorResponse(originalMessage, new Exception());
+    servicesConsumer.doErrorResponse(originalMessage, new Exception(), null);
 
-    verify(mockResponseService).setHttpStatus("400");
     verify(mockResponseService).doService(originalMessage);
-  }
-
-  @Override
-  public boolean isAnnotatedForJunit4() {
-    return true;
   }
 }

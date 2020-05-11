@@ -1,32 +1,29 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.apache.commons.lang3.ObjectUtils;
-
+import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
-import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.CoreException;
-import com.adaptris.core.ServiceException;
 import com.adaptris.core.XStreamJsonMarshaller;
-import com.adaptris.core.management.MgmtComponentImpl;
-import com.adaptris.core.util.LifecycleHelper;
+import com.adaptris.rest.healthcheck.AdapterList;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
-import com.adaptris.rest.healthcheck.JmxMBeanHelper;
 import com.adaptris.rest.healthcheck.WorkflowState;
+import com.adaptris.rest.util.JmxMBeanHelper;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
-
+import lombok.Getter;
 import lombok.Lombok;
+import lombok.Setter;
 
 @XStreamAlias("health-check")
-public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
+public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   private static final String BOOTSTRAP_PATH_KEY = "rest.health-check.path";
 
@@ -44,19 +41,21 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   private static final String PATH_KEY = "jettyURI";
 
-  private transient WorkflowServicesConsumer consumer;
-
+  @Getter
+  @Setter
   private transient JmxMBeanHelper jmxMBeanHelper;
 
+  @Setter
   private String configuredUrlPath;
 
   public WorkflowHealthCheckComponent() {
-    this.setConsumer(new HttpRestWorkflowServicesConsumer());
+    super();
     this.setJmxMBeanHelper(new JmxMBeanHelper());
   }
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+    MDC.put(MDC_KEY, friendlyName()); // this is arguably redundant because it's added in the consumer...
     String pathValue = message.getMetadataValue(PATH_KEY);
     String[] pathItem = pathValue.split("/");
     String adapterName = pathItem.length > 2 ? pathItem[2] : null;
@@ -65,15 +64,14 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
     try {
       List<AdapterState> states = this.generateStateMap(adapterName, channelName, workflowName);
-      String jsonString = new XStreamJsonMarshaller().marshal(states);
+      String jsonString = new XStreamJsonMarshaller().marshal(AdapterList.wrap(states));
       message.setContent(jsonString, message.getContentEncoding());
 
-      this.getConsumer().doResponse(message, message);
+      this.getConsumer().doResponse(message, message, HttpRestWorkflowServicesConsumer.CONTENT_TYPE_JSON);
     } catch (Exception ex) {
-      try {
-        this.getConsumer().doErrorResponse(message, ex);
-      } catch (ServiceException e) {
-      }
+      sendErrorResponseQuietly(getConsumer(), message, ex);
+    } finally {
+      MDC.remove(MDC_KEY);
     }
 
   }
@@ -87,7 +85,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
       try {
         String adapterId = this.getJmxMBeanHelper().getStringAttribute(adapterMBean.getObjectName().toString(), UNIQUE_ID);
 
-        if ((adapterName == null) || (adapterName.equals(adapterId))) {
+        if (equalsOrNull(adapterName, adapterId)) {
           String adapterComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(adapterMBean.getObjectName().toString(), COMPONENT_STATE);
 
           AdapterState adapterState = new AdapterState();
@@ -98,7 +96,7 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
           for (ObjectName channelObjectName : channels) {
             String channelId = this.getJmxMBeanHelper().getStringAttribute(channelObjectName.toString(), UNIQUE_ID);
 
-            if ((channelName == null) || (channelName.equals(channelId))) {
+            if (equalsOrNull(channelName, channelId)) {
               String channelComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(channelObjectName.toString(), COMPONENT_STATE);
 
               ChannelState channelState = new ChannelState();
@@ -109,17 +107,17 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
               for (ObjectName workflowObjectName : workflows) {
                 String workflowId = this.getJmxMBeanHelper().getStringAttribute(workflowObjectName.toString(), UNIQUE_ID);
 
-                if ((workflowName == null) || (workflowName.equals(workflowId))) {
+                if (equalsOrNull(workflowName, workflowId)) {
                   String workflowComponentState = this.getJmxMBeanHelper().getStringAttributeClassName(workflowObjectName.toString(), COMPONENT_STATE);
 
                   WorkflowState workflowState = new WorkflowState();
                   workflowState.setId(workflowId);
                   workflowState.setState(workflowComponentState);
 
-                  channelState.getWorkflowStates().add(workflowState);
+                  channelState.applyDefaultIfNull().add(workflowState);
                 }
               }
-              adapterState.getChannelStates().add(channelState);
+              adapterState.applyDefaultIfNull().add(channelState);
             }
           }
           states.add(adapterState);
@@ -135,67 +133,21 @@ public class WorkflowHealthCheckComponent extends MgmtComponentImpl implements A
 
   @Override
   public void init(Properties config) throws Exception {
+    super.init(config);
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
   @Override
-  public void start() throws Exception {
-    WorkflowHealthCheckComponent instance = this;
-    new Thread(() -> {
-      try {
-        getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-        getConsumer().setConsumedUrlPath(configuredUrlPath());
-        getConsumer().setMessageListener(instance);
-        LifecycleHelper.initAndStart(getConsumer());
-
-        log.debug("Workflow REST services component started.");
-      } catch (CoreException e) {
-        log.error("Could not start the Workflow REST services component.", e);
-      }
-    }).start();
-  }
-
-  @Override
-  public void stop() throws Exception {
-    LifecycleHelper.stop(getConsumer());
-  }
-
-  @Override
-  public void destroy() throws Exception {
-    LifecycleHelper.close(getConsumer());
-  }
-
-  @Override
-  public String friendlyName() {
-    return this.getClass().getSimpleName();
-  }
-
-  public WorkflowServicesConsumer getConsumer() {
-    return consumer;
-  }
-
-  public void setConsumer(WorkflowServicesConsumer consumer) {
-    this.consumer = consumer;
-  }
-
-  String configuredUrlPath() {
-    return ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
-  }
-
   public String getConfiguredUrlPath() {
-    return configuredUrlPath;
+    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
   }
 
-  public void setConfiguredUrlPath(String configuredUrlPath) {
-    this.configuredUrlPath = configuredUrlPath;
+  @Override
+  protected String getAcceptedFilter() {
+    return ACCEPTED_FILTER;
   }
 
-  public JmxMBeanHelper getJmxMBeanHelper() {
-    return jmxMBeanHelper;
+  private static boolean equalsOrNull(String value, String expected) {
+    return Optional.ofNullable(value).map((v) -> v.equals(expected)).orElse(Boolean.TRUE);
   }
-
-  public void setJmxMBeanHelper(JmxMBeanHelper jmxMBeanHelper) {
-    this.jmxMBeanHelper = jmxMBeanHelper;
-  }
-
 }

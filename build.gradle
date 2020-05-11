@@ -8,8 +8,8 @@ plugins {
   id 'jacoco'
   // Manage optional dependencies in maven pom.
   id 'nebula.optional-base' version '5.0.3'
-  id 'com.github.spotbugs' version '3.0.0'
-  id "io.freefair.lombok" version "4.1.6"
+  id 'com.github.spotbugs' version '4.0.5'
+  id "io.freefair.lombok" version "5.0.0"
 }
 
 ext {
@@ -21,6 +21,8 @@ ext {
   repoUsername = project.hasProperty('repoUsername') ? project.getProperty('repoUsername') : 'unknown'
   repoPassword = project.hasProperty('repoPassword') ? project.getProperty('repoPassword') : 'unknown'
   defaultNexusRepo = project.hasProperty('defaultNexusRepo') ? project.getProperty('defaultNexusRepo') : 'https://repo1.maven.org/maven2/'
+
+  delombokTargetDir = new File("${project.projectDir}/src/main/generated")
 
   offlineJavadocPackageDir = new File(project.buildDir, "offline-javadoc-packages")
   interlokJavadocs= project.hasProperty('interlokJavadocs') ? project.getProperty('interlokJavadocs') : javadocsBaseUrl + "/interlok-core/" + interlokCoreVersion
@@ -120,6 +122,11 @@ configurations {
   all*.exclude group: 'stax', module: 'stax-api'
   all*.exclude group: 'org.codehaus.woodstox'
   all*.exclude group: 'org.eclipse.jetty.orbit', module: 'javax.mail.glassfish'
+  // INTERLOK-3197 exclude old javax.mail
+  all*.exclude group: 'com.sun.mail', module: 'javax.mail'
+  all*.exclude group: 'javax.validation', module: 'validation-api'
+  all*.exclude group: 'javax.activation', module: 'activation'
+  all*.exclude group: 'javax.activation', module: 'javax.activation-api'
 }
 
 configurations.all {
@@ -127,23 +134,27 @@ configurations.all {
 }
 
 dependencies {
-  compile ("com.adaptris:interlok-core:$interlokCoreVersion") { changing= true}
-  compile ("com.adaptris:interlok-common:$interlokCoreVersion") { changing= true}
+  // Since this is all maven now, we should be in a position where SNAPSHOT is auto
+  // regarded as CHANGING...
+  compile ("com.adaptris:interlok-core:$interlokCoreVersion")
+  compile ("com.adaptris:interlok-common:$interlokCoreVersion")
 
-  compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") { changing= true}
-  compile ("com.adaptris:interlok-client:$interlokCoreVersion") { changing= true}
+  compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion")
+  compile ("com.adaptris:interlok-client:$interlokCoreVersion")
 
-  annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion") {changing= true}
+  compile "com.adaptris:interlok-cluster-manager:$interlokCoreVersion", optional
+
+  annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
 
   testCompile ('junit:junit:4.13')
-  testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing= true}
+  testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion")
   testCompile ("org.mockito:mockito-all:1.10.19")
   testCompile ("org.awaitility:awaitility:4.0.2")
 
-  javadoc("com.adaptris:interlok-core-apt:$interlokCoreVersion") { changing= true}
-  offlineJavadocPackages ("com.adaptris:interlok-core:$interlokCoreVersion:javadoc@jar") { changing= true}
-  offlineJavadocPackages ("com.adaptris:interlok-common:$interlokCoreVersion:javadoc@jar") { changing= true}
+  javadoc("com.adaptris:interlok-core-apt:$interlokCoreVersion")
+  offlineJavadocPackages ("com.adaptris:interlok-core:$interlokCoreVersion:javadoc@jar")
+  offlineJavadocPackages ("com.adaptris:interlok-common:$interlokCoreVersion:javadoc@jar")
 
 }
 
@@ -286,6 +297,8 @@ publishing {
         def properties = asNode().appendNode("properties")
         properties.appendNode("target", "3.8.0+")
         properties.appendNode("tags", "rest")
+        properties.appendNode("readme", "https://github.com/adaptris/interlok-workflow-rest-services/raw/develop/README.md")
+        properties.appendNode("repository", "https://github.com/adaptris/interlok-workflow-rest-services")
       }
     }
   }
@@ -300,27 +313,50 @@ publishing {
   }
 }
 
-spotbugs {
+spotbugsMain {
+  effort = "max"
+  reportLevel = "high"
   // showProgress = "true"
   effort = "max"
   // Ignore failures?
   // ignoreFailures = false
-
-  // We only care about "high priority" issues...
-  reportLevel = "high"
+  reports {
+    xml {
+      enabled = false
+    }
+    html {
+      enabled = true
+    }
+  }
+  // includeFilter = new File("$rootDir/gradle/spotbugs-filter.xml")
+  // excludeFilter = new File("$rootDir/gradle/spotbugs-exclude.xml")
 }
 
 // disable spotbugsTests which checks our test code..
 spotbugsTest.enabled = false
 
-tasks.withType(com.github.spotbugs.SpotBugsTask) {
-  reports {
-    xml.enabled = false
-    html.enabled = true
-  }
+
+delombok {
+  target = delombokTargetDir
+}
+
+task lgtmCompile(type: JavaCompile, dependsOn: delombok) {
+  group 'Build'
+  description 'Compile for lgtm'
+
+  source = sourceSets.main.extensions.delombokTask
+  destinationDir = sourceSets.main.java.outputDir
+  classpath = project.sourceSets.main.compileClasspath
+}
+
+
+task deleteGeneratedFiles(type: Delete) {
+  delete 'activemq-data'
+  delete 'data'
+  delete delombokTargetDir
 }
 
 check.dependsOn jacocoTestReport
 processTestResources.dependsOn copyUnitTestProperties
-clean.dependsOn deleteUnitTestProperties
+clean.dependsOn deleteUnitTestProperties,deleteGeneratedFiles
 javadoc.dependsOn offlinePackageList,umlJavadoc

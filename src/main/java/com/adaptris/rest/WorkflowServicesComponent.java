@@ -1,33 +1,30 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
-
+import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
-import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.DefaultSerializableMessageTranslator;
-import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.core.util.JmxHelper;
-import com.adaptris.core.util.LifecycleHelper;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
+import lombok.Getter;
+import lombok.Setter;
 
-public class WorkflowServicesComponent extends MgmtComponentImpl implements AdaptrisMessageListener {
+public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
   private static final String WORKFLOW_OBJ_NAME ="*com.adaptris:type=Workflow,*";
 
@@ -59,22 +56,30 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   private static final String HTTP_HEADER_HOST = "http.header.Host";
 
-  private transient WorkflowServicesConsumer consumer;
-
+  @Getter
+  @Setter
   private transient DefaultSerializableMessageTranslator messageTranslator;
 
+  @Getter
+  @Setter
   private transient InterlokJmxClient jmxClient;
 
+  @Getter
+  @Setter
   private transient WorkflowTargetTranslator targetTranslator;
 
+  @Getter
+  @Setter
   private transient MBeanServer interlokMBeanServer;
 
+  @Getter
+  @Setter
   private transient AdaptrisMessageFactory messageFactory;
 
+  @Setter
   private String configuredUrlPath;
 
   public WorkflowServicesComponent() {
-    this.setConsumer(new HttpRestWorkflowServicesConsumer());
     this.setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
     this.setJmxClient(new InterlokJmxClient());
     this.setMessageTranslator(new DefaultSerializableMessageTranslator());
@@ -83,6 +88,7 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+    MDC.put(MDC_KEY, friendlyName());
     log.debug("Processing incoming message {}", message.getUniqueId());
 
     try {
@@ -99,9 +105,9 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
       }
     } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
-      try {
-        this.getConsumer().doErrorResponse(message, e);
-      } catch (Exception silent) {}
+      sendErrorResponseQuietly(getConsumer(), message, e);
+    } finally {
+      MDC.remove(MDC_KEY);
     }
   }
   private AdaptrisMessage generateDefinitionFile(String host) throws IOException, MalformedObjectNameException {
@@ -141,104 +147,18 @@ public class WorkflowServicesComponent extends MgmtComponentImpl implements Adap
 
   @Override
   public void init(Properties config) throws Exception {
+    super.init(config);
     this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
   @Override
-  public void start() throws Exception {
-    WorkflowServicesComponent instance = this;
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          getConsumer().setAcceptedHttpMethods(ACCEPTED_FILTER);
-          getConsumer().setConsumedUrlPath(configuredUrlPath());
-          getConsumer().setMessageListener(instance);
-          getConsumer().prepare();
-          LifecycleHelper.initAndStart(getConsumer());
-
-          log.debug("Workflow REST services component started.");
-        } catch (CoreException e) {
-          log.error("Could not start the Workflow REST services component '{}'", friendlyName(), e);
-        }
-      }
-    }).start();
-
-  }
-
-  @Override
-  public void stop() throws Exception {
-    LifecycleHelper.stop(getConsumer());
-  }
-
-  @Override
-  public void destroy() throws Exception {
-    LifecycleHelper.close(getConsumer());
-  }
-
-  @Override
-  public String friendlyName() {
-    return this.getClass().getSimpleName();
-  }
-
-  public WorkflowServicesConsumer getConsumer() {
-    return consumer;
-  }
-
-  public void setConsumer(WorkflowServicesConsumer consumer) {
-    this.consumer = consumer;
-  }
-
-  public WorkflowTargetTranslator getTargetTranslator() {
-    return targetTranslator;
-  }
-
-  public void setTargetTranslator(WorkflowTargetTranslator targetTranslator) {
-    this.targetTranslator = targetTranslator;
-  }
-
-  public DefaultSerializableMessageTranslator getMessageTranslator() {
-    return messageTranslator;
-  }
-
-  public void setMessageTranslator(DefaultSerializableMessageTranslator messageTranslator) {
-    this.messageTranslator = messageTranslator;
-  }
-
-  public InterlokJmxClient getJmxClient() {
-    return jmxClient;
-  }
-
-  public void setJmxClient(InterlokJmxClient jmxClient) {
-    this.jmxClient = jmxClient;
-  }
-
-  public MBeanServer getInterlokMBeanServer() {
-    return interlokMBeanServer;
-  }
-
-  public void setInterlokMBeanServer(MBeanServer interlokMBeanServer) {
-    this.interlokMBeanServer = interlokMBeanServer;
-  }
-
-  public AdaptrisMessageFactory getMessageFactory() {
-    return messageFactory;
-  }
-
-  public void setMessageFactory(AdaptrisMessageFactory messageFactory) {
-    this.messageFactory = messageFactory;
-  }
-
-  String configuredUrlPath() {
-    return (String) ObjectUtils.defaultIfNull(this.getConfiguredUrlPath(), DEFAULT_PATH);
-  }
-
   public String getConfiguredUrlPath() {
-    return configuredUrlPath;
+    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
   }
 
-  public void setConfiguredUrlPath(String configuredUrlPath) {
-    this.configuredUrlPath = configuredUrlPath;
+  @Override
+  protected String getAcceptedFilter() {
+    return ACCEPTED_FILTER;
   }
 
 }

@@ -6,31 +6,26 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
-
 import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
-import com.adaptris.core.BaseCase;
 import com.adaptris.core.CoreException;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.SerializableAdaptrisMessage;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
 
-public class WorkflowServicesComponentTest extends BaseCase {
+public class WorkflowServicesComponentTest {
   
   private static final String PATH_KEY = "jettyURI";
   
@@ -149,7 +144,7 @@ public class WorkflowServicesComponentTest extends BaseCase {
     workflowServicesComponent.onAdaptrisMessage(message);
     
     verify(mockJmxClient, times(0)).process(any(), any());
-    verify(mockConsumer).doErrorResponse(any(), any());
+    verify(mockConsumer).doErrorResponse(any(), any(), any());
   }
   
   private void startComponent() throws Exception {
@@ -162,8 +157,4 @@ public class WorkflowServicesComponentTest extends BaseCase {
     workflowServicesComponent.destroy();
   }
 
-  @Override
-  public boolean isAnnotatedForJunit4() {
-    return true;
-  }
 }
