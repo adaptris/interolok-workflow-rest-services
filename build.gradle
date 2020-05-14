@@ -149,13 +149,7 @@ dependencies {
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
 
   testCompile ('junit:junit:4.13')
-  testCompile "org.slf4j:slf4j-simple:$slf4jVersion"
-  // exclude any log4j dependencies so that we can just use slf4j simple.
-  // works around INTERLOk-3233
-  testCompile "com.adaptris:interlok-stubs:$interlokCoreVersion", {
-    changing= true
-    exclude group: "org.apache.logging.log4j"
-  }
+  testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
   testCompile ("org.mockito:mockito-all:1.10.19")
   testCompile ("org.awaitility:awaitility:4.0.2")
 
