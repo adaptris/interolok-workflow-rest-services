@@ -32,6 +32,7 @@ ext {
   componentName='Interlok Workflow REST'
   organizationName = "Adaptris Ltd"
   organizationUrl = "http://interlok.adaptris.net"
+  slf4jVersion="1.7.30"
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -148,7 +149,13 @@ dependencies {
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
 
   testCompile ('junit:junit:4.13')
-  testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion")
+  testCompile "org.slf4j:slf4j-simple:$slf4jVersion"
+  // exclude any log4j dependencies so that we can just use slf4j simple.
+  // works around INTERLOk-3233
+  testCompile "com.adaptris:interlok-stubs:$interlokCoreVersion", {
+    changing= true
+    exclude group: "org.apache.logging.log4j"
+  }
   testCompile ("org.mockito:mockito-all:1.10.19")
   testCompile ("org.awaitility:awaitility:4.0.2")
 
