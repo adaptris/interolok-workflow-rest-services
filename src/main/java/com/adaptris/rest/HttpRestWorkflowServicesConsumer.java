@@ -83,7 +83,7 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
           StringUtils.defaultIfBlank(contentType, CONTENT_TYPE_DEFAULT));
       getResponseService().doService(processedMessage);
     } catch (Exception exc) {
-      log.trace("Ignored exception during error response {}", exc.getMessage());
+      log.trace("Ignored exception sending HTTP response {}", exc.getMessage());
     }
   }
 
