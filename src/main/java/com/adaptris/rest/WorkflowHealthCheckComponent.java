@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import com.adaptris.core.InitialisedState;
 import com.adaptris.core.StartedState;
 import com.adaptris.core.StoppedState;
 import com.adaptris.core.XStreamJsonMarshaller;
+import com.adaptris.core.http.jetty.JettyConstants;
 import com.adaptris.rest.healthcheck.AdapterList;
 import com.adaptris.rest.healthcheck.AdapterState;
 import com.adaptris.rest.healthcheck.ChannelState;
@@ -52,10 +54,14 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   private static final String COMPONENT_STATE = "ComponentState";
 
-  private static final String PATH_KEY = "jettyURI";
+  private static final String PATH_KEY = JettyConstants.JETTY_URI;
 
-  private static final String LIVENESS_BRANCH = "^(.*)/alive$";
-  private static final String READINESS_BRANCH = "^(.*)/ready$";
+  private static final String LIVENESS_URL = "^.*/alive$";
+  private static final String READINESS_URL = "^.*/ready$";
+  private static final String DEFAULT_URL = "^.*$";
+
+  private static final List<String> URL_PATTERNS =
+      Collections.unmodifiableList(Arrays.asList(LIVENESS_URL, READINESS_URL, DEFAULT_URL));
 
   // mapping "StartedState" -> StartedState.getInstance()
   private static final List<ComponentState> STATE_LIST =
@@ -68,7 +74,6 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
   private static final Map<String, ComponentState> NAME_TO_COMPONENT_STATE =
       Collections.unmodifiableMap(STATE_LIST.stream()
           .collect(Collectors.toMap((s) -> s.getClass().getSimpleName(), s -> s)));
-
 
   @Getter(AccessLevel.PACKAGE)
   @Setter(AccessLevel.PACKAGE)
@@ -84,10 +89,38 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
   @Getter(AccessLevel.PROTECTED)
   private transient final String defaultUrlPath = DEFAULT_PATH;
 
+  // maps the jettyURI metadata value into its appropriate behaviour.
+  private final Map<String, RequestHandler> urlRoutes;
+
+
   public WorkflowHealthCheckComponent() {
     super();
     marshaller = new XStreamJsonMarshaller();
     setJmxMBeanHelper(new JmxMBeanHelper());
+    urlRoutes = buildRoutes();
+  }
+
+  // Build the behaviour associated with each "branch" that is possible.
+  private Map<String, RequestHandler> buildRoutes() {
+    Map<String, RequestHandler> routes = new HashMap<>();
+    routes.put(LIVENESS_URL, (msg) -> {
+      // We are alive, because we got here, so just return a blank payload.
+      sendPayload(msg, Optional.empty());
+    });
+    routes.put(READINESS_URL, (msg) -> {
+      // ready means we need to check all the states, and if something isn't started we return a 503
+      buildAdapterStates((id, component) -> {
+        throw new NotReadyException(id + " is not started");
+      });
+      sendPayload(msg, Optional.empty());
+    });
+    routes.put(DEFAULT_URL, (msg) -> {
+      // otherwise we just get the list of states, and report on them.
+      List<AdapterState> states = buildAdapterStates((id, component) -> {
+      });
+      sendPayload(msg, Optional.of(states));
+    });
+    return routes;
   }
 
   @Override
@@ -97,22 +130,13 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
     MDC.put(MDC_KEY, friendlyName());
     String pathValue = message.getMetadataValue(PATH_KEY);
     try {
-      if (pathValue.matches(LIVENESS_BRANCH)) {
-        // We are alive, because we got here, so just return a blank payload.
-        sendPayload(message, Optional.empty());
-      } else if (pathValue.matches(READINESS_BRANCH)) {
-        // ready means we need to check all the states, and if something isn't started we return a
-        // 503
-        buildAdapterStates((id, component) -> {
-          throw new NotReadyException(id + " is not started");
-        });
-        sendPayload(message, Optional.empty());
-      } else {
-        // otherwise we just get the list of states, and report on them.
-        List<AdapterState> states = buildAdapterStates((id, component) -> {
-        });
-        sendPayload(message, Optional.of(states));
-      }
+      // DEFAULT_BRANCH should always match, so if get() throws an exception
+      // then we're in an error state anyway.
+      RequestHandler handler = URL_PATTERNS.stream().filter((s) -> pathValue.matches(s))
+          .findFirst()
+          .map((s) -> urlRoutes.get(s))
+          .get();
+      handler.handle(message);
       onSuccess.accept(message);
     } catch (NotReadyException e) {
       sendPayload(message, String.format("{\"failure\": \"%s\"}", e.getMessage()), ERROR_NOT_READY);
@@ -207,9 +231,18 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
     setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
+  // What to do if the component isn't ready.
+  // Should a BiConsumer or some such.
   @FunctionalInterface
   private interface IfNotReady {
     void handle(String id, ComponentState state) throws Exception;
+  }
+
+  // Basically this lambda is for handling the HTTP request that gets to us.
+  // Should just be a Consumer, but exceptions
+  @FunctionalInterface
+  private interface RequestHandler {
+    void handle(AdaptrisMessage msg) throws Exception;
   }
 
   private class NotReadyException extends Exception {
