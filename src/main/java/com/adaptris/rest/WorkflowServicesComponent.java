@@ -1,6 +1,6 @@
 package com.adaptris.rest;
 
-import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
+import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_BAD_REQUEST;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
@@ -110,7 +110,7 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
     } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
-      getConsumer().doErrorResponse(message, e, ERROR_DEFAULT);
+      getConsumer().doErrorResponse(message, e, ERROR_BAD_REQUEST);
     } finally {
       MDC.remove(MDC_KEY);
     }

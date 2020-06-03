@@ -18,6 +18,7 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
 
 
   public static final int OK_200 = HttpURLConnection.HTTP_OK;
+  public static final int ERROR_BAD_REQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
   public static final int ERROR_DEFAULT = HttpURLConnection.HTTP_INTERNAL_ERROR;
   public static final int ERROR_NOT_READY = HttpURLConnection.HTTP_UNAVAILABLE;
 
