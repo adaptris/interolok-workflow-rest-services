@@ -9,13 +9,10 @@ import com.adaptris.core.CoreException;
 import com.adaptris.core.ServiceException;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.util.LifecycleHelper;
-import com.adaptris.interlok.util.Args;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @NoArgsConstructor
 public abstract class WorkflowServicesConsumer implements ComponentLifecycle, ComponentLifecycleExtension {
 
@@ -57,11 +54,15 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
     doResponse(original, processed, CONTENT_TYPE_DEFAULT);
   }
 
-  protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
-      throws ServiceException;
+  protected void doResponse(AdaptrisMessage orig, AdaptrisMessage proc, String contentType)
+      throws ServiceException {
+    doResponse(orig, proc, contentType, OK_200);
+  }
 
-  protected abstract void doErrorResponse(AdaptrisMessage message, Exception e, int httpStatus)
-      throws ServiceException;
+  protected abstract void doResponse(AdaptrisMessage orig, AdaptrisMessage proc, String contentType,
+      int httpResponse);
+
+  protected abstract void doErrorResponse(AdaptrisMessage message, Exception e, int httpStatus);
 
   @Override
   public void prepare() throws CoreException {
@@ -87,18 +88,5 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   @Override
   public void close() {
     LifecycleHelper.close(getStandaloneConsumer());
-  }
-
-  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg,
-      Exception e, int httpStatus) {
-    try {
-      Args.notNull(c, "workflow-services-consumer").doErrorResponse(msg, e, httpStatus);
-    } catch (Exception exc) {
-      log.trace("Ignored exception during error response {}", exc.getMessage());
-    }
-  }
-
-  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e) {
-    sendErrorResponseQuietly(c, msg, e, ERROR_DEFAULT);
   }
 }

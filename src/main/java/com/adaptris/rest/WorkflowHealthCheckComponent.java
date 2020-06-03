@@ -1,8 +1,9 @@
 package com.adaptris.rest;
 
 import static com.adaptris.rest.WorkflowServicesConsumer.CONTENT_TYPE_JSON;
+import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
 import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_NOT_READY;
-import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
+import static com.adaptris.rest.WorkflowServicesConsumer.OK_200;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -114,20 +115,24 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
       }
       onSuccess.accept(message);
     } catch (NotReadyException e) {
-      sendErrorResponseQuietly(getConsumer(), message, e, ERROR_NOT_READY);
+      sendPayload(message, String.format("{\"failure\": \"%s\"}", e.getMessage()), ERROR_NOT_READY);
     } catch (Exception e) {
-      sendErrorResponseQuietly(getConsumer(), message, e);
+      getConsumer().doErrorResponse(message, e, ERROR_DEFAULT);
     } finally {
       MDC.remove(MDC_KEY);
     }
   }
 
-  private void sendPayload(AdaptrisMessage message, Optional<List<AdapterState>> optState)
-      throws Exception {
-    String newPayload = optState.map((s) -> toString(s)).orElse("");
+
+  private void sendPayload(AdaptrisMessage message, String newPayload, int httpStatus) {
     // Since JSON should always be UTF-8
     message.setContent(newPayload, StandardCharsets.UTF_8.name());
-    getConsumer().doResponse(message, message, CONTENT_TYPE_JSON);
+    getConsumer().doResponse(message, message, CONTENT_TYPE_JSON, httpStatus);
+  }
+
+  private void sendPayload(AdaptrisMessage message, Optional<List<AdapterState>> optState) {
+    String newPayload = optState.map((s) -> toString(s)).orElse("");
+    sendPayload(message, newPayload, OK_200);
   }
 
   @SneakyThrows

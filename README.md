@@ -22,26 +22,16 @@ Optionally, you can also set the property named __rest.health-check.path__, whic
 
 There are 3 modes of operation a health-check, a liveness probe and a readiness probe.
 
-#### Liveness probe
-
-```
-curl -si http://localhost:8080/workflow-health-check/alive
-```
-
-This just returns a `200 OK`, indicating that the Interlok instance considers itself _alive_. There is no response data in the event of a `200 OK`.
-
-#### Readiness probe
-
-```
-curl -si http://localhost:8080/workflow-health-check/alive
-```
-
-This returns a `200 OK` if all the channels and workflows are started; otherwise a `503 Unavailable` is returned. There is no response data in the event of a `200 OK`.
-
 #### HealthCheck mode
 
 ```
 curl -si http://localhost:8080/workflow-health-check
+HTTP/1.1 200 OK
+Content-Type: application/json
+Transfer-Encoding: chunked
+Server: Jetty(9.4.29.v20200521)
+
+{"adapters":[{"adapter-state":{"id":"MyInterlokInstance","state":"StartedState","channel-states":[{"channel-state":[{"id":"jetty1","state":"StartedState","workflow-states":[{"workflow-state":{"id":"jetty-workflow","state":"StartedState"}}]},{"id":"jetty2(not-started)","state":"ClosedState","workflow-states":[{"workflow-state":{"id":"jetty-workflow","state":"ClosedState"}}]},{"id":"jetty3","state":"StartedState","workflow-states":[{"workflow-state":{"id":"jetty-workflow","state":"StartedState"}}]}]}]}}]}
 ```
 
 This will return a JSON array, with all of your adapter, channel and workflow states.  A state, can be one of either; __StartedState__, __InitialisedState__, __StoppedState__ or __ClosedState__. For example:
@@ -90,6 +80,40 @@ This will return a JSON array, with all of your adapter, channel and workflow st
     }]
 }
 ```
+
+
+#### Liveness probe
+
+* From _3.10.2_
+
+```
+$ curl -si http://localhost:8080/workflow-health-check/alive
+HTTP/1.1 200 OK
+Content-Type: application/json
+Transfer-Encoding: chunked
+Server: Jetty(9.4.29.v20200521)
+
+
+```
+
+This just returns a `200 OK`, indicating that the Interlok instance considers itself _alive_. __Alive does not mean useful__. There is no response data in the event of a `200 OK`.
+
+#### Readiness probe
+
+* From _3.10.2_
+
+```
+$ curl -si http://localhost:8080/workflow-health-check/ready
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json
+Transfer-Encoding: chunked
+Server: Jetty(9.4.29.v20200521)
+
+{"failure": "jetty2(not-started) is not started"}
+```
+
+This returns a `200 OK` if all the channels and workflows are started; otherwise a `503 Unavailable` is returned. There is no response data in the event of a `200 OK`; in the event of a `503 Unavailable` only the first component that was "not-started" will be reported to shortcut response times.
+
 
 ## Cluster Manager
 

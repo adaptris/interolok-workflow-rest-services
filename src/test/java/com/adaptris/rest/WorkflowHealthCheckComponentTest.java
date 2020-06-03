@@ -27,7 +27,6 @@ import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.CoreException;
-import com.adaptris.core.ServiceException;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.StartedState;
 import com.adaptris.core.StoppedState;
@@ -215,8 +214,8 @@ public class WorkflowHealthCheckComponentTest {
 
       await().atMost(Durations.FIVE_SECONDS).with().pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
           .until(testConsumer::complete);
-      assertTrue(testConsumer.isError);
-      assertTrue(testConsumer.storedException.getMessage().contains("is not started"));
+      assertFalse(testConsumer.isError);
+      assertTrue(testConsumer.payload.contains("is not started"));
       assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, testConsumer.httpStatus);
     } finally {
       wrapper.destroy();
@@ -236,6 +235,7 @@ public class WorkflowHealthCheckComponentTest {
 
       await().atMost(Durations.FIVE_SECONDS).with().pollInterval(Durations.ONE_HUNDRED_MILLISECONDS)
           .until(testConsumer::complete);
+      assertEquals(HttpURLConnection.HTTP_OK, testConsumer.httpStatus);
       assertFalse(testConsumer.isError);
       assertEquals("", testConsumer.payload);
     } finally {
@@ -351,15 +351,15 @@ public class WorkflowHealthCheckComponentTest {
     }
 
     @Override
-    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
-        throws ServiceException {
+    protected void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage,
+        String contentType, int status) {
       payload = processedMessage.getContent();
+      httpStatus = status;
     }
 
 
     @Override
-    public void doErrorResponse(AdaptrisMessage message, Exception e, int status)
-        throws ServiceException {
+    public void doErrorResponse(AdaptrisMessage message, Exception e, int status) {
       isError = true;
       storedException = e;
       httpStatus = status;

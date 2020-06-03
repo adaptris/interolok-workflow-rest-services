@@ -1,6 +1,5 @@
 package com.adaptris.rest;
-
-import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietly;
+import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -61,7 +60,7 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
       onSuccess.accept(message);
 
     } catch (Exception ex) {
-      sendErrorResponseQuietly(getConsumer(), message, ex);
+      getConsumer().doErrorResponse(message, ex, ERROR_DEFAULT);
     } finally {
       MDC.remove(MDC_KEY);
     }
