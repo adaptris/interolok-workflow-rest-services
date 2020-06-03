@@ -19,6 +19,7 @@ import com.adaptris.core.http.jetty.JettyResponseService;
 import com.adaptris.core.http.jetty.MetadataHeaderHandler;
 import com.adaptris.core.http.jetty.MetadataParameterHandler;
 import com.adaptris.core.http.jetty.NoOpResponseHeaderProvider;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +34,12 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
 
   private static final String PARAMETER_PREFIX = "http.param.";
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient JettyResponseService responseService;
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PRIVATE)
+  @Setter(AccessLevel.PRIVATE)
   private transient String owner;
 
   public HttpRestWorkflowServicesConsumer(String ownerRef) {
@@ -55,7 +56,7 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
       @Override
       public AdaptrisMessage createMessage(HttpServletRequest request, HttpServletResponse response)
           throws IOException, ServletException {
-        MDC.put(MDC_KEY, owner);
+        MDC.put(MDC_KEY, getOwner());
         return super.createMessage(request, response);
       }
     };
