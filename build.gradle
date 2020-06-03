@@ -35,6 +35,7 @@ ext {
   organizationUrl = "http://interlok.adaptris.net"
   slf4jVersion="1.7.30"
   log4j2Version = '2.13.3'
+  mockitoVersion = '3.3.3'
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -152,7 +153,8 @@ dependencies {
 
   testCompile ('junit:junit:4.13')
   testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
-  testCompile ("org.mockito:mockito-all:1.10.19")
+  testCompile ("org.mockito:mockito-core:$mockitoVersion")
+  testCompile ("org.mockito:mockito-inline:$mockitoVersion")
   testCompile ("org.awaitility:awaitility:4.0.3")
   // INTERLOK-3233 we still need log4j since we're doing MDC stuffs.
   testCompile ("org.apache.logging.log4j:log4j-core:$log4j2Version")

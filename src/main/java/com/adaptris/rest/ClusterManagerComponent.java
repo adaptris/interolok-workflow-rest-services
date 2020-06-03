@@ -4,7 +4,6 @@ import static com.adaptris.rest.WorkflowServicesConsumer.sendErrorResponseQuietl
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.CoreException;
@@ -12,6 +11,7 @@ import com.adaptris.core.XStreamJsonMarshaller;
 import com.adaptris.mgmt.cluster.ClusterInstance;
 import com.adaptris.mgmt.cluster.mbean.ClusterManagerMBean;
 import com.adaptris.rest.util.JmxMBeanHelper;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,17 +25,20 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
   private static final String DEFAULT_PATH = "/cluster-manager/*";
 
   private static final String CLUSTER_MANAGER_OBJECT_NAME = "com.adaptris:type=ClusterManager,id=ClusterManager";
-  
-  @Getter
-  @Setter
+
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient JmxMBeanHelper jmxMBeanHelper;
 
-  @Setter
-  private String configuredUrlPath;
+  @Getter(AccessLevel.PROTECTED)
+  private transient final String defaultUrlPath = DEFAULT_PATH;
+
+  @Getter(AccessLevel.PROTECTED)
+  private transient final String acceptedFilter = ACCEPTED_FILTER;
 
   public ClusterManagerComponent () {
     super();
-    this.setJmxMBeanHelper(new JmxMBeanHelper());
+    setJmxMBeanHelper(new JmxMBeanHelper());
   }
 
   @Override
@@ -43,8 +46,8 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
     try {
       MDC.put(MDC_KEY, friendlyName());
 
-      ClusterManagerMBean clusterManager = this.getJmxMBeanHelper().proxyMBean(CLUSTER_MANAGER_OBJECT_NAME, ClusterManagerMBean.class);
-      
+      ClusterManagerMBean clusterManager = getJmxMBeanHelper().proxyMBean(CLUSTER_MANAGER_OBJECT_NAME, ClusterManagerMBean.class);
+
       final List<ClusterInstance> clusterInstances = new ArrayList<ClusterInstance>();
       clusterManager.getClusterInstances().getKeys().forEach(key -> {
         try {
@@ -53,8 +56,10 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
       });
       String jsonString = new XStreamJsonMarshaller().marshal(clusterInstances);
       message.setContent(jsonString, message.getContentEncoding());
-      
-      this.getConsumer().doResponse(message, message, HttpRestWorkflowServicesConsumer.CONTENT_TYPE_JSON);
+
+      getConsumer().doResponse(message, message, HttpRestWorkflowServicesConsumer.CONTENT_TYPE_JSON);
+      onSuccess.accept(message);
+
     } catch (Exception ex) {
       sendErrorResponseQuietly(getConsumer(), message, ex);
     } finally {
@@ -65,16 +70,6 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
   @Override
   public void init(Properties config) throws Exception {
     super.init(config);
-    this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
-  }
-
-  @Override
-  public String getConfiguredUrlPath() {
-    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
-  }
-
-  @Override
-  protected String getAcceptedFilter() {
-    return ACCEPTED_FILTER;
+    setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 }

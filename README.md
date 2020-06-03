@@ -20,53 +20,74 @@ Optionally, you can also set the property named __rest.health-check.path__, whic
 
 ### Running
 
+There are 3 modes of operation a health-check, a liveness probe and a readiness probe.
 
-Using your favourite HTTP GET/POST tool, make a GET request to the running Interlok instance;
-```
-http GET http://<host>:<port>/workflow-health-check
-```
+#### Liveness probe
 
-This will return a JSON array, with all of your adapter, channel and workflow states.  A state, can be one of either; __StartedState__, __InitialisedState__, __StoppedState__ or __ClosedState__.
-
-You can further narrow the results of this service, by optionally specifying the adapter instance, channel and further even the workflow on the URL.  Like this;
 ```
-http GET http://<host>:<port>/workflow-health-check/<adapter-id>/<channel-id>/<workflow-id>
+curl -si http://localhost:8080/workflow-health-check/alive
 ```
 
-Below is an example of the resulting JSON.
+This just returns a `200 OK`, indicating that the Interlok instance considers itself _alive_. There is no response data.
+
+#### Readiness probe
+
+```
+curl -si http://localhost:8080/workflow-health-check/alive
+```
+
+This returns a `200 OK` if all the channels and workflows are started; otherwise a `503 Unavailable` is returned. There is no response data.
+
+#### HealthCheck mode
+
+```
+curl -si http://localhost:8080/workflow-health-check
+```
+
+This will return a JSON array, with all of your adapter, channel and workflow states.  A state, can be one of either; __StartedState__, __InitialisedState__, __StoppedState__ or __ClosedState__. For example:
 
 ```json
 {
-  "java.util.Collection": [
-    {
-      "adapter-state": {
-        "id": "MyInterlokInstance",
-        "state": "StartedState",
-        "channel-states": [
-          {
-            "channel-state": {
-              "id": "http_channel",
-              "state": "StartedState",
-              "workflow-states": [
-                {
-                  "workflow-state": [
-                    {
-                      "id": "secondStandardWorkflow",
-                      "state": "StartedState"
-                    },
-                    {
-                      "id": "standardWorkflow",
-                      "state": "StartedState"
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
-  ]
+    "adapters": [{
+        "adapter-state": {
+            "id": "MyInterlokInstance",
+            "state": "StartedState",
+            "channel-states": [{
+                "channel-state": [{
+                    "id": "jetty1",
+                    "state": "StartedState",
+                    "workflow-states": [{
+                        "workflow-state": {
+                            "id": "jetty-workflow",
+                            "state": "StartedState"
+                        }
+                        "workflow-state": {
+                            "id": "another-workflow",
+                            "state": "StartedState"
+                        }
+                    }]
+                }, {
+                    "id": "jetty2(not-started)",
+                    "state": "ClosedState",
+                    "workflow-states": [{
+                        "workflow-state": {
+                            "id": "jetty-workflow",
+                            "state": "ClosedState"
+                        }
+                    }]
+                }, {
+                    "id": "jetty3",
+                    "state": "StartedState",
+                    "workflow-states": [{
+                        "workflow-state": {
+                            "id": "jetty-workflow",
+                            "state": "StartedState"
+                        }
+                    }]
+                }]
+            }]
+        }
+    }]
 }
 ```
 

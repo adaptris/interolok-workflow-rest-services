@@ -1,5 +1,6 @@
 package com.adaptris.rest;
 
+import java.net.HttpURLConnection;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.ComponentLifecycle;
@@ -19,17 +20,21 @@ import lombok.extern.slf4j.Slf4j;
 public abstract class WorkflowServicesConsumer implements ComponentLifecycle, ComponentLifecycleExtension {
 
 
+  public static final int OK_200 = HttpURLConnection.HTTP_OK;
+  public static final int ERROR_DEFAULT = HttpURLConnection.HTTP_INTERNAL_ERROR;
+  public static final int ERROR_NOT_READY = HttpURLConnection.HTTP_UNAVAILABLE;
+
   public static final String CONTENT_TYPE_DEFAULT = "text/plain";
   public static final String CONTENT_TYPE_JSON = "application/json";
 
   @Getter
   @Setter
   private StandaloneConsumer standaloneConsumer;
-  
+
   @Getter
   @Setter
   private AdaptrisMessageListener messageListener;
-  
+
   /**
    * This is the url that this consumer will listen for requests.
    * For example "/workflow-services/*"; will trigger this consumer for any requests on "http://host:port/workflow-services/...".
@@ -37,7 +42,7 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   @Getter
   @Setter
   private String consumedUrlPath;
-  
+
   /**
    * A comma separated list of accepted http request methods; GET, POST, PATCH etc etc
    * And example might be "GET,POST".
@@ -45,24 +50,25 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   @Getter
   @Setter
   private String acceptedHttpMethods;
-    
+
   protected abstract StandaloneConsumer configureConsumer(AdaptrisMessageListener messageListener, String consumedUrlPath, String acceptedHttpMethods);
-  
+
   protected void doResponse(AdaptrisMessage original, AdaptrisMessage processed) throws ServiceException {
     doResponse(original, processed, CONTENT_TYPE_DEFAULT);
   }
 
   protected abstract void doResponse(AdaptrisMessage originalMessage, AdaptrisMessage processedMessage, String contentType)
       throws ServiceException;
-  
-  public abstract void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException;
+
+  protected abstract void doErrorResponse(AdaptrisMessage message, Exception e, int httpStatus)
+      throws ServiceException;
 
   @Override
   public void prepare() throws CoreException {
-    this.setStandaloneConsumer(configureConsumer(this.getMessageListener(), this.getConsumedUrlPath(), this.getAcceptedHttpMethods()));
+    setStandaloneConsumer(configureConsumer(getMessageListener(), getConsumedUrlPath(), getAcceptedHttpMethods()));
     LifecycleHelper.prepare(getStandaloneConsumer());
   }
-  
+
   @Override
   public void init() throws CoreException {
     LifecycleHelper.init(getStandaloneConsumer());
@@ -82,16 +88,17 @@ public abstract class WorkflowServicesConsumer implements ComponentLifecycle, Co
   public void close() {
     LifecycleHelper.close(getStandaloneConsumer());
   }
-  
-  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e, String contentType) {
+
+  public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg,
+      Exception e, int httpStatus) {
     try {
-      Args.notNull(c, "workflow-services-consumer").doErrorResponse(msg, e, contentType);
+      Args.notNull(c, "workflow-services-consumer").doErrorResponse(msg, e, httpStatus);
     } catch (Exception exc) {
       log.trace("Ignored exception during error response {}", exc.getMessage());
     }
   }
 
   public static void sendErrorResponseQuietly(WorkflowServicesConsumer c, AdaptrisMessage msg, Exception e) {
-    sendErrorResponseQuietly(c, msg, e, CONTENT_TYPE_DEFAULT);
+    sendErrorResponseQuietly(c, msg, e, ERROR_DEFAULT);
   }
 }

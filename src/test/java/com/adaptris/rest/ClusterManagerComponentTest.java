@@ -172,7 +172,8 @@ public class ClusterManagerComponentTest {
 
 
     @Override
-    public void doErrorResponse(AdaptrisMessage message, Exception e, String contentType) throws ServiceException {
+    public void doErrorResponse(AdaptrisMessage message, Exception e, int status)
+        throws ServiceException {
       isError = true;
     }
     

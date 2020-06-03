@@ -11,16 +11,15 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageFactory;
-import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.DefaultSerializableMessageTranslator;
 import com.adaptris.core.util.JmxHelper;
 import com.adaptris.interlok.client.MessageTarget;
 import com.adaptris.interlok.client.jmx.InterlokJmxClient;
 import com.adaptris.interlok.types.SerializableMessage;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -56,34 +55,38 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
 
   private static final String HTTP_HEADER_HOST = "http.header.Host";
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient DefaultSerializableMessageTranslator messageTranslator;
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient InterlokJmxClient jmxClient;
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient WorkflowTargetTranslator targetTranslator;
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient MBeanServer interlokMBeanServer;
 
-  @Getter
-  @Setter
+  @Getter(AccessLevel.PACKAGE)
+  @Setter(AccessLevel.PACKAGE)
   private transient AdaptrisMessageFactory messageFactory;
 
-  @Setter
-  private String configuredUrlPath;
+  @Getter(AccessLevel.PROTECTED)
+  private transient final String acceptedFilter = ACCEPTED_FILTER;
+
+  @Getter(AccessLevel.PROTECTED)
+  private transient final String defaultUrlPath = DEFAULT_PATH;
+
 
   public WorkflowServicesComponent() {
-    this.setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
-    this.setJmxClient(new InterlokJmxClient());
-    this.setMessageTranslator(new DefaultSerializableMessageTranslator());
-    this.setMessageFactory(DefaultMessageFactory.getDefaultInstance());
+    setTargetTranslator(new JettyConsumerWorkflowTargetTranslator());
+    setJmxClient(new InterlokJmxClient());
+    setMessageTranslator(new DefaultSerializableMessageTranslator());
+    setMessageFactory(AdaptrisMessageFactory.getDefaultInstance());
   }
 
   @Override
@@ -92,17 +95,19 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
     log.debug("Processing incoming message {}", message.getUniqueId());
 
     try {
-      MessageTarget translateTarget = this.getTargetTranslator().translateTarget(message);
+      MessageTarget translateTarget = getTargetTranslator().translateTarget(message);
       if(translateTarget != null) {
-        SerializableMessage processedMessage = this.getJmxClient().process(translateTarget, this.getMessageTranslator().translate(message));
+        SerializableMessage processedMessage = getJmxClient().process(translateTarget, getMessageTranslator().translate(message));
 
-        AdaptrisMessage responseMessage = this.getMessageTranslator().translate(processedMessage);
-        this.getConsumer().doResponse(message, responseMessage);
+        AdaptrisMessage responseMessage = getMessageTranslator().translate(processedMessage);
+        getConsumer().doResponse(message, responseMessage);
 
       } else { // we'll just return the definition.
         AdaptrisMessage responseMessage = generateDefinitionFile(message.getMetadataValue(HTTP_HEADER_HOST));
-        this.getConsumer().doResponse(message, responseMessage);
+        getConsumer().doResponse(message, responseMessage);
       }
+      onSuccess.accept(message);
+
     } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
       sendErrorResponseQuietly(getConsumer(), message, e);
@@ -113,12 +118,12 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
   private AdaptrisMessage generateDefinitionFile(String host) throws IOException, MalformedObjectNameException {
     StringBuilder definition = new StringBuilder();
 
-    AdaptrisMessage responseMessage = this.getMessageFactory().newMessage();
+    AdaptrisMessage responseMessage = getMessageFactory().newMessage();
 
-    if(this.getInterlokMBeanServer() == null)
-      this.setInterlokMBeanServer(JmxHelper.findMBeanServer());
+    if(getInterlokMBeanServer() == null)
+      setInterlokMBeanServer(JmxHelper.findMBeanServer());
 
-    Set<ObjectInstance> objectInstanceSet = this.getInterlokMBeanServer().queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
+    Set<ObjectInstance> objectInstanceSet = getInterlokMBeanServer().queryMBeans(new ObjectName(WORKFLOW_OBJ_NAME), null);
     Iterator<ObjectInstance> iterator = objectInstanceSet.iterator();
     definition.append(readResourceAsString(DEF_HEADER, responseMessage.getContentEncoding()));
     while (iterator.hasNext()) {
@@ -135,8 +140,10 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
   }
 
   private String readResourceAsString(String resourceName, String contentEncoding) throws IOException {
-    InputStream resourceBody = this.getClass().getClassLoader().getResourceAsStream(resourceName);
-    return IOUtils.toString(resourceBody, contentEncoding);
+    try (InputStream resourceBody =
+        this.getClass().getClassLoader().getResourceAsStream(resourceName)) {
+      return IOUtils.toString(resourceBody, contentEncoding);
+    }
   }
 
   private String personalizedWorkflowDef(String rawDef, ObjectName objectName) {
@@ -148,17 +155,7 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
   @Override
   public void init(Properties config) throws Exception {
     super.init(config);
-    this.setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
-  }
-
-  @Override
-  public String getConfiguredUrlPath() {
-    return ObjectUtils.defaultIfNull(configuredUrlPath, DEFAULT_PATH);
-  }
-
-  @Override
-  protected String getAcceptedFilter() {
-    return ACCEPTED_FILTER;
+    setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
 
 }
