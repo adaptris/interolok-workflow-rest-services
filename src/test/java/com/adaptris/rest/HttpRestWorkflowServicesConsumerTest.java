@@ -1,6 +1,9 @@
 package com.adaptris.rest;
 
+import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import org.junit.After;
 import org.junit.Before;
@@ -10,6 +13,7 @@ import org.mockito.MockitoAnnotations;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.DefaultMessageFactory;
+import com.adaptris.core.ServiceException;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
@@ -65,10 +69,25 @@ public class HttpRestWorkflowServicesConsumerTest {
   }
 
   @Test
+  public void testOkResponse_Throws() throws Exception {
+    servicesConsumer.setResponseService(mockResponseService);
+    doThrow(new ServiceException()).when(mockResponseService).doService(any());
+    servicesConsumer.doResponse(originalMessage, processedMessage);
+  }
+
+
+  @Test
   public void testErrorResponse() throws Exception {
     servicesConsumer.setResponseService(mockResponseService);
-    servicesConsumer.doErrorResponse(originalMessage, new Exception(), null);
-
+    servicesConsumer.doErrorResponse(originalMessage, new Exception(), ERROR_DEFAULT);
     verify(mockResponseService).doService(originalMessage);
+  }
+
+
+  @Test
+  public void testErrorResponse_Throws() throws Exception {
+    servicesConsumer.setResponseService(mockResponseService);
+    doThrow(new ServiceException()).when(mockResponseService).doService(any());
+    servicesConsumer.doErrorResponse(originalMessage, new Exception(), ERROR_DEFAULT);
   }
 }
