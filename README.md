@@ -28,7 +28,7 @@ There are 3 modes of operation a health-check, a liveness probe and a readiness 
 curl -si http://localhost:8080/workflow-health-check/alive
 ```
 
-This just returns a `200 OK`, indicating that the Interlok instance considers itself _alive_. There is no response data.
+This just returns a `200 OK`, indicating that the Interlok instance considers itself _alive_. There is no response data in the event of a `200 OK`.
 
 #### Readiness probe
 
@@ -36,7 +36,7 @@ This just returns a `200 OK`, indicating that the Interlok instance considers it
 curl -si http://localhost:8080/workflow-health-check/alive
 ```
 
-This returns a `200 OK` if all the channels and workflows are started; otherwise a `503 Unavailable` is returned. There is no response data.
+This returns a `200 OK` if all the channels and workflows are started; otherwise a `503 Unavailable` is returned. There is no response data in the event of a `200 OK`.
 
 #### HealthCheck mode
 
