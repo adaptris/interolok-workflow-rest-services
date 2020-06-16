@@ -50,7 +50,7 @@ This will return a JSON array, with all of your adapter, channel and workflow st
                         "workflow-state": {
                             "id": "jetty-workflow",
                             "state": "StartedState"
-                        }
+                        },
                         "workflow-state": {
                             "id": "another-workflow",
                             "state": "StartedState"
