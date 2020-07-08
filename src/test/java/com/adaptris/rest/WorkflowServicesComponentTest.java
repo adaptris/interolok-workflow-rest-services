@@ -1,7 +1,8 @@
 package com.adaptris.rest;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -139,12 +140,12 @@ public class WorkflowServicesComponentTest {
   @Test
   public void testErrorResponse() throws Exception {
     startComponent();
-    
+
     message.addMessageHeader(PATH_KEY, "/workflow-services/1/2/3/4/5/6/7/8/9");
     workflowServicesComponent.onAdaptrisMessage(message);
-    
+
     verify(mockJmxClient, times(0)).process(any(), any());
-    verify(mockConsumer).doErrorResponse(any(), any(), any());
+    verify(mockConsumer).doErrorResponse(any(), any(), anyInt());
   }
   
   private void startComponent() throws Exception {
