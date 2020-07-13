@@ -15,6 +15,7 @@ import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.ServiceException;
 import com.adaptris.core.StandaloneConsumer;
+import com.adaptris.core.http.jetty.JettyMessageConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
 public class HttpRestWorkflowServicesConsumerTest {
@@ -56,8 +57,9 @@ public class HttpRestWorkflowServicesConsumerTest {
       }
     }, PATH, ACCEPTED_FILTER);
 
-    assertEquals(PATH, standaloneConsumer.getConsumer().getDestination().getDestination());
-    assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
+    JettyMessageConsumer consumer = (JettyMessageConsumer) standaloneConsumer.getConsumer();
+    assertEquals(PATH, consumer.getPath());
+    assertEquals(ACCEPTED_FILTER, consumer.getMethods());
   }
 
   @Test

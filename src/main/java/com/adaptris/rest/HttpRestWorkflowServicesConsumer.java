@@ -10,7 +10,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.AdaptrisMessageListener;
-import com.adaptris.core.ConfiguredConsumeDestination;
 import com.adaptris.core.StandaloneConsumer;
 import com.adaptris.core.http.jetty.EmbeddedConnection;
 import com.adaptris.core.http.jetty.JettyConstants;
@@ -61,10 +60,8 @@ public class HttpRestWorkflowServicesConsumer extends WorkflowServicesConsumer {
       }
     };
 
-    ConfiguredConsumeDestination configuredConsumeDestination = new ConfiguredConsumeDestination(consumedUrlPath);
-    configuredConsumeDestination.setFilterExpression(acceptedHttpMethods);
-
-    messageConsumer.setDestination(configuredConsumeDestination);
+    messageConsumer.setPath(consumedUrlPath);
+    messageConsumer.setMethods(acceptedHttpMethods);
     messageConsumer.setHeaderHandler(new MetadataHeaderHandler(HEADER_PREFIX));
     messageConsumer.setParameterHandler(new MetadataParameterHandler(PARAMETER_PREFIX));
     messageConsumer.registerAdaptrisMessageListener(messageListener);
