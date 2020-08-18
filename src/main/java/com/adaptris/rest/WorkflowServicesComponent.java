@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
@@ -90,7 +91,8 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
   }
 
   @Override
-  public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+  public void onAdaptrisMessage(AdaptrisMessage message, Consumer<AdaptrisMessage> onSuccess,
+      Consumer<AdaptrisMessage> onFailure) {
     MDC.put(MDC_KEY, friendlyName());
     log.debug("Processing incoming message {}", message.getUniqueId());
 
@@ -111,6 +113,7 @@ public class WorkflowServicesComponent extends AbstractRestfulEndpoint {
     } catch (Exception e) {
       log.error("Unable to inject REST message into the workflow.", e);
       getConsumer().doErrorResponse(message, e, ERROR_BAD_REQUEST);
+      onFailure.accept(message);
     } finally {
       MDC.remove(MDC_KEY);
     }

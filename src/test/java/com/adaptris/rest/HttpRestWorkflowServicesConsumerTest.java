@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import java.util.function.Consumer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,7 +51,8 @@ public class HttpRestWorkflowServicesConsumerTest {
   public void testCreateStandardConsumer() throws Exception {
     StandaloneConsumer standaloneConsumer = servicesConsumer.configureConsumer(new AdaptrisMessageListener() {
       @Override
-      public void onAdaptrisMessage(AdaptrisMessage msg, java.util.function.Consumer<AdaptrisMessage> onSuccess) {}
+      public void onAdaptrisMessage(AdaptrisMessage message,
+              Consumer<AdaptrisMessage> onSuccess, Consumer<AdaptrisMessage> onFailure) {}
       @Override
       public String friendlyName() {
         return null;

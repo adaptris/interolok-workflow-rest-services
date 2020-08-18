@@ -3,6 +3,7 @@ import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.Consumer;
 import org.slf4j.MDC;
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.CoreException;
@@ -41,7 +42,8 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
   }
 
   @Override
-  public void onAdaptrisMessage(AdaptrisMessage message, java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+  public void onAdaptrisMessage(AdaptrisMessage message,
+      Consumer<AdaptrisMessage> onSuccess, Consumer<AdaptrisMessage> onFailure) {
     try {
       MDC.put(MDC_KEY, friendlyName());
 
@@ -61,6 +63,7 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
 
     } catch (Exception ex) {
       getConsumer().doErrorResponse(message, ex, ERROR_DEFAULT);
+      onFailure.accept(message);
     } finally {
       MDC.remove(MDC_KEY);
     }
@@ -71,4 +74,5 @@ public class ClusterManagerComponent extends AbstractRestfulEndpoint {
     super.init(config);
     setConfiguredUrlPath(config.getProperty(BOOTSTRAP_PATH_KEY));
   }
+
 }
