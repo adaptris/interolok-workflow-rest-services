@@ -183,6 +183,10 @@ public class PrometheusMetricsComponent extends AbstractRestfulEndpoint {
   @Setter
   private ProfilerEventClientMBean profilerEventClient;
 
+  public PrometheusMetricsComponent() {
+    this.setJmxMBeanHelper(new JmxMBeanHelper());
+  }
+  
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, Consumer<AdaptrisMessage> success, Consumer<AdaptrisMessage> failure) {
     try {
