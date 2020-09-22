@@ -8,14 +8,14 @@ plugins {
   id 'jacoco'
   // Manage optional dependencies in maven pom.
   id 'nebula.optional-base' version '5.0.3'
-  id 'com.github.spotbugs' version '4.2.3'
-  id "io.freefair.lombok" version "5.1.0"
+  id 'com.github.spotbugs' version '4.5.0'
+  id "io.freefair.lombok" version "5.1.1"
   id 'org.owasp.dependencycheck' version '5.3.2.1'
 }
 
 ext {
-  interlokCoreVersion = project.hasProperty('interlokCoreVersion') ? project.getProperty('interlokCoreVersion') : '3.10-SNAPSHOT'
-  releaseVersion = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : '3.10-SNAPSHOT'
+  interlokCoreVersion = project.hasProperty('interlokCoreVersion') ? project.getProperty('interlokCoreVersion') : '3.11-SNAPSHOT'
+  releaseVersion = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : '3.11-SNAPSHOT'
   nexusBaseUrl = project.hasProperty('nexusBaseUrl') ? project.getProperty('nexusBaseUrl') : 'https://nexus.adaptris.net/nexus'
   javadocsBaseUrl = nexusBaseUrl + "/content/sites/javadocs/com/adaptris"
   mavenPublishUrl = project.hasProperty('mavenPublishUrl') ? project.getProperty('mavenPublishUrl') : nexusBaseUrl + '/content/repositories/snapshots'
@@ -35,7 +35,7 @@ ext {
   organizationUrl = "http://interlok.adaptris.net"
   slf4jVersion="1.7.30"
   log4j2Version = '2.13.3'
-  mockitoVersion = '3.3.3'
+  mockitoVersion = '3.5.9'
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -147,6 +147,8 @@ dependencies {
   compile ("com.adaptris:interlok-client:$interlokCoreVersion")
 
   compile "com.adaptris:interlok-cluster-manager:$interlokCoreVersion", optional
+  
+  compile "com.adaptris:interlok-monitor-agent:$interlokCoreVersion", optional
 
   annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")

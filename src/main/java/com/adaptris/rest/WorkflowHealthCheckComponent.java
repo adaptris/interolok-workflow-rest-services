@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
@@ -125,7 +126,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message,
-      java.util.function.Consumer<AdaptrisMessage> onSuccess) {
+      Consumer<AdaptrisMessage> onSuccess, Consumer<AdaptrisMessage> onFailure) {
     // this is arguably redundant because it's added in the consumer...
     MDC.put(MDC_KEY, friendlyName());
     String pathValue = message.getMetadataValue(PATH_KEY);
@@ -142,6 +143,7 @@ public class WorkflowHealthCheckComponent extends AbstractRestfulEndpoint {
       sendPayload(message, String.format("{\"failure\": \"%s\"}", e.getMessage()), ERROR_NOT_READY);
     } catch (Exception e) {
       getConsumer().doErrorResponse(message, e, ERROR_DEFAULT);
+      onFailure.accept(message);
     } finally {
       MDC.remove(MDC_KEY);
     }

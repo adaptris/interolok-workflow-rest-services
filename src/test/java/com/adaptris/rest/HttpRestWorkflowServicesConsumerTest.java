@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import java.util.function.Consumer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +16,7 @@ import com.adaptris.core.AdaptrisMessageListener;
 import com.adaptris.core.DefaultMessageFactory;
 import com.adaptris.core.ServiceException;
 import com.adaptris.core.StandaloneConsumer;
+import com.adaptris.core.http.jetty.JettyMessageConsumer;
 import com.adaptris.core.http.jetty.JettyResponseService;
 
 public class HttpRestWorkflowServicesConsumerTest {
@@ -49,15 +51,17 @@ public class HttpRestWorkflowServicesConsumerTest {
   public void testCreateStandardConsumer() throws Exception {
     StandaloneConsumer standaloneConsumer = servicesConsumer.configureConsumer(new AdaptrisMessageListener() {
       @Override
-      public void onAdaptrisMessage(AdaptrisMessage msg, java.util.function.Consumer<AdaptrisMessage> onSuccess) {}
+      public void onAdaptrisMessage(AdaptrisMessage message,
+              Consumer<AdaptrisMessage> onSuccess, Consumer<AdaptrisMessage> onFailure) {}
       @Override
       public String friendlyName() {
         return null;
       }
     }, PATH, ACCEPTED_FILTER);
 
-    assertEquals(PATH, standaloneConsumer.getConsumer().getDestination().getDestination());
-    assertEquals(ACCEPTED_FILTER, standaloneConsumer.getConsumer().getDestination().getFilterExpression());
+    JettyMessageConsumer consumer = (JettyMessageConsumer) standaloneConsumer.getConsumer();
+    assertEquals(PATH, consumer.getPath());
+    assertEquals(ACCEPTED_FILTER, consumer.getMethods());
   }
 
   @Test
