@@ -8,9 +8,9 @@ plugins {
   id 'jacoco'
   // Manage optional dependencies in maven pom.
   id 'nebula.optional-base' version '5.0.3'
-  id 'com.github.spotbugs' version '4.5.0'
-  id "io.freefair.lombok" version "5.1.1"
-  id 'org.owasp.dependencycheck' version '5.3.2.1'
+  id 'com.github.spotbugs' version '4.5.1'
+  id "io.freefair.lombok" version "5.3.0"
+  id 'org.owasp.dependencycheck' version '6.0.3'
 }
 
 ext {
@@ -35,7 +35,7 @@ ext {
   organizationUrl = "http://interlok.adaptris.net"
   slf4jVersion="1.7.30"
   log4j2Version = '2.13.3'
-  mockitoVersion = '3.5.9'
+  mockitoVersion = '3.6.0'
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -153,7 +153,7 @@ dependencies {
   annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
   umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
 
-  testCompile ('junit:junit:4.13')
+  testCompile ('junit:junit:4.13.1')
   testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
   testCompile ("org.mockito:mockito-core:$mockitoVersion")
   testCompile ("org.mockito:mockito-inline:$mockitoVersion")
