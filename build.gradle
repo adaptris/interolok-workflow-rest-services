@@ -90,7 +90,8 @@ ext.buildInfo = { ->
     }
 }
 
-sourceCompatibility = 1.8
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
 group   = 'com.adaptris'
 version = releaseVersion
 generateLombokConfig.enabled = false
@@ -147,7 +148,7 @@ dependencies {
   compile ("com.adaptris:interlok-client:$interlokCoreVersion")
 
   compile "com.adaptris:interlok-cluster-manager:$interlokCoreVersion", optional
-  
+
   compile "com.adaptris:interlok-monitor-agent:$interlokCoreVersion", optional
 
   annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
