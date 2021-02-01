@@ -1,1 +1,5 @@
 rootProject.name = 'interlok-workflow-rest-services'
+include 'interlok-rest-base'
+include 'interlok-rest-cluster'
+include 'interlok-rest-health-check'
+include 'interlok-rest-prometheus'
