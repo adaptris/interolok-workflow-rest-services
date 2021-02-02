@@ -8,8 +8,8 @@ plugins {
 }
 
 ext {
-  interlokCoreVersion = project.findProperty('interlokCoreVersion') ?: '3.12-SNAPSHOT'
-  releaseVersion = project.findProperty('releaseVersion') ?: '3.12-SNAPSHOT'
+  interlokCoreVersion = project.findProperty('interlokCoreVersion') ?: '4.0-SNAPSHOT'
+  releaseVersion = project.findProperty('releaseVersion') ?: '4.0-SNAPSHOT'
   nexusBaseUrl = project.findProperty('nexusBaseUrl') ?: 'https://nexus.adaptris.net/nexus'
   mavenPublishUrl = project.findProperty('mavenPublishUrl') ?: nexusBaseUrl + '/content/repositories/snapshots'
   javadocsBaseUrl = nexusBaseUrl + "/content/sites/javadocs/com/adaptris"
@@ -24,6 +24,7 @@ ext {
 
   slf4jVersion = '1.7.30'
   mockitoVersion = '3.6.28'
+  log4j2Version = '2.14.0'
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
@@ -42,13 +43,13 @@ ext.hostname = { ->
 }
 
 ext.hasGraphViz = { ->
-  def app = "dot"
-  if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-    app = app + ".exe"
-  }
-  return System.getenv("PATH").split(File.pathSeparator).any{
-    java.nio.file.Paths.get("${it}").resolve(app).toFile().exists()
-  }
+//  def app = "dot"
+//  if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+//    app = app + ".exe"
+//  }
+//  return System.getenv("PATH").split(File.pathSeparator).any{
+//    java.nio.file.Paths.get("${it}").resolve(app).toFile().exists()
+//  }
 }
 ext.gitBranchNameOrTimestamp = { branchName ->
   if (branchName.equals("HEAD") || branchName.equals("develop") || branchName.startsWith("release")) {
@@ -92,8 +93,8 @@ subprojects {
   apply plugin: 'com.github.spotbugs'
   apply plugin: 'org.owasp.dependencycheck'
 
-  sourceCompatibility = JavaVersion.VERSION_1_8
-  targetCompatibility = JavaVersion.VERSION_1_8
+  sourceCompatibility = JavaVersion.VERSION_11
+  targetCompatibility = JavaVersion.VERSION_11
   group   = 'com.adaptris'
   version = releaseVersion
   def versionDir = "$buildDir/version"
@@ -133,33 +134,31 @@ subprojects {
 
   // In this section you declare the dependencies for your production and test code
   dependencies {
-      compile ("com.adaptris:interlok-core:$interlokCoreVersion") { changing= true}
-      compile ("com.adaptris:interlok-core-apt:$interlokCoreVersion") { changing= true}
-	  
-	  compile ("com.adaptris:interlok-client:$interlokCoreVersion") { changing= true}
-	  compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") { changing= true}
-	  compile ("com.adaptris:interlok-monitor-agent:$interlokCoreVersion") { changing= true}
-	  
-      compile ("org.slf4j:slf4j-api:$slf4jVersion")
-      compile ("org.slf4j:jcl-over-slf4j:$slf4jVersion")
+	compile ("com.adaptris:interlok-core:$interlokCoreVersion")
+	compile ("com.adaptris:interlok-common:$interlokCoreVersion")
 
-      annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion") { changing= true}
-      testCompile ('junit:junit:4.13.1')
-      testCompile "org.slf4j:slf4j-simple:$slf4jVersion"
-      // exclude any log4j dependencies so that we can just use slf4j simple.
-      // works around INTERLOk-3233
-      testCompile "com.adaptris:interlok-stubs:$interlokCoreVersion", {
-        changing= true
-        exclude group: "org.apache.logging.log4j"
-      }
-      testCompile ("org.slf4j:jcl-over-slf4j:$slf4jVersion")
-      testCompile ("org.mockito:mockito-core:$mockitoVersion")
-      testCompile ("org.mockito:mockito-inline:$mockitoVersion")
-      javadoc("com.adaptris:interlok-core-apt:$interlokCoreVersion") { changing= true}
-      umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
+	compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion")
+	compile ("com.adaptris:interlok-client:$interlokCoreVersion")
 
-      offlineJavadocPackages ("com.adaptris:interlok-core:$interlokCoreVersion:javadoc@jar") { changing= true}
-      offlineJavadocPackages ("com.adaptris:interlok-common:$interlokCoreVersion:javadoc@jar") { changing= true}
+	compile "com.adaptris:interlok-monitor-agent:$interlokCoreVersion"
+
+	annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
+	umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
+
+	testCompile ('junit:junit:4.13.1')
+	testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
+	testCompile ("org.mockito:mockito-core:$mockitoVersion")
+	testCompile ("org.mockito:mockito-inline:$mockitoVersion")
+	testCompile ("org.awaitility:awaitility:4.0.3")
+	// INTERLOK-3233 we still need log4j since we're doing MDC stuffs.
+	testCompile ("org.apache.logging.log4j:log4j-core:$log4j2Version")
+	testCompile ("org.apache.logging.log4j:log4j-api:$log4j2Version")
+	testCompile ("org.apache.logging.log4j:log4j-1.2-api:$log4j2Version")
+	testCompile ("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
+
+	javadoc("com.adaptris:interlok-core-apt:$interlokCoreVersion")
+	offlineJavadocPackages ("com.adaptris:interlok-core:$interlokCoreVersion:javadoc@jar")
+	offlineJavadocPackages ("com.adaptris:interlok-common:$interlokCoreVersion:javadoc@jar")
   }
 
   javadoc {
@@ -171,6 +170,7 @@ subprojects {
       options.linksOffline(interlokCommonJavadocs, offlineJavadocPackageDir.getCanonicalPath() + "/interlok-common-$interlokCoreVersion-javadoc.jar")
       taglets = ["com.adaptris.taglet.ConfigTaglet", "com.adaptris.taglet.LicenseTaglet"]
       options.addStringOption "tagletpath", configurations.javadoc.asPath
+	  options.addBooleanOption "-no-module-directories", true
     }
   }
 
@@ -191,6 +191,7 @@ subprojects {
       options.linksOffline(interlokCommonJavadocs, offlineJavadocPackageDir.getCanonicalPath() + "/interlok-common-$interlokCoreVersion-javadoc.jar")
       taglets = ["com.adaptris.taglet.ConfigTaglet", "com.adaptris.taglet.LicenseTaglet"]
       options.addStringOption "tagletpath", configurations.javadoc.asPath
+	  options.addBooleanOption "-no-module-directories", true
       options.docletpath = configurations.umlDoclet.files.asType(List)
       options.doclet = "nl.talsmasoftware.umldoclet.UMLDoclet"
       options.addStringOption "umlBasePath", destinationDir.getCanonicalPath()
@@ -250,6 +251,7 @@ subprojects {
       }
     }
     include "package-list"
+	include "element-list"
     into offlineJavadocPackageDir
   }
 

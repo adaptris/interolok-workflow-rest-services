@@ -1,0 +1,2 @@
+class=com.adaptris.rest.WorkflowServicesComponent
+classloader.unused=com.adaptris.core.management.classloader.BlacklistingFactory
