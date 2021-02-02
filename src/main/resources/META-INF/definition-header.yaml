@@ -1,8 +1,0 @@
-openapi: 3.0.1
-info:
-  title: Interlok Workflow REST services
-  description: A REST entry point into your Interlok workflows.
-  version: "1.0"
-servers:
-  - url: 'http://{host}'
-paths:

@@ -5,6 +5,8 @@ ext {
 
 dependencies {
 	compile project(':interlok-rest-base')
+	
+	testCompile project(':interlok-rest-base').sourceSets.test.output
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {

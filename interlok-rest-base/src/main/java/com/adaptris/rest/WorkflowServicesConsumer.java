@@ -16,7 +16,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public abstract class WorkflowServicesConsumer implements ComponentLifecycle, ComponentLifecycleExtension {
 
-
   public static final int OK_200 = HttpURLConnection.HTTP_OK;
   public static final int ERROR_BAD_REQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
   public static final int ERROR_DEFAULT = HttpURLConnection.HTTP_INTERNAL_ERROR;
