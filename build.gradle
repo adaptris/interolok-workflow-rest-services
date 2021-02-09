@@ -23,7 +23,7 @@ ext {
   organizationName = "Adaptris Ltd"
 
   slf4jVersion = '1.7.30'
-  mockitoVersion = '3.6.28'
+  mockitoVersion = '3.7.7'
   log4j2Version = '2.14.0'
 }
 
