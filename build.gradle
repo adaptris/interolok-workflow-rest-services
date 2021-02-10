@@ -50,7 +50,9 @@ ext.hasGraphViz = { ->
 //  return System.getenv("PATH").split(File.pathSeparator).any{
 //    java.nio.file.Paths.get("${it}").resolve(app).toFile().exists()
 //  }
+  return false;
 }
+
 ext.gitBranchNameOrTimestamp = { branchName ->
   if (branchName.equals("HEAD") || branchName.equals("develop") || branchName.startsWith("release")) {
     return new Date().format('HH:mm:ss z');
