@@ -147,7 +147,7 @@ subprojects {
 	annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
 	umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
 
-	testCompile ('junit:junit:4.13.1')
+	testCompile ('junit:junit:4.13.2')
 	testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
 	testCompile ("org.mockito:mockito-core:$mockitoVersion")
 	testCompile ("org.mockito:mockito-inline:$mockitoVersion")
