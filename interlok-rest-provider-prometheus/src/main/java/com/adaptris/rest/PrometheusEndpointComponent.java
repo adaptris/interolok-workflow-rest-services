@@ -5,6 +5,7 @@ import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
 import java.util.function.Consumer;
 
 import com.adaptris.core.AdaptrisMessage;
+import com.adaptris.rest.metrics.MetricProviders;
 
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
@@ -30,7 +31,7 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
     prometheusRegistry.config().meterFilter(new PrometheusRenameFilter());
     
     try {
-      MetricProviders.PROVIDERS.forEach( provider -> {
+      MetricProviders.getProviders().forEach( provider -> {
         try {
           provider.bindTo(prometheusRegistry);
         } catch (Exception e) {

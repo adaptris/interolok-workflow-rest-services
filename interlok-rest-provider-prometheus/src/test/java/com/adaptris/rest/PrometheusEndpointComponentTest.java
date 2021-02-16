@@ -9,6 +9,8 @@ import org.junit.Test;
 
 import com.adaptris.core.AdaptrisMessage;
 import com.adaptris.core.DefaultMessageFactory;
+import com.adaptris.rest.metrics.MetricBinder;
+import com.adaptris.rest.metrics.MetricProviders;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -46,8 +48,8 @@ public class PrometheusEndpointComponentTest {
   
   @Test
   public void testMetrics() throws Exception {
-    MetricProviders.PROVIDERS.clear();
-    MetricProviders.PROVIDERS.add(new MockMetricProvider());
+    MetricProviders.getProviders().clear();
+    MetricProviders.getProviders().add(new MockMetricProvider());
     
     component.onAdaptrisMessage(message);
     
@@ -57,8 +59,8 @@ public class PrometheusEndpointComponentTest {
   
   @Test
   public void testErrorResponseOnMetricGenerationException() throws Exception {
-    MetricProviders.PROVIDERS.clear();
-    MetricProviders.PROVIDERS.add(new MockFailingMetricProvider());
+    MetricProviders.getProviders().clear();
+    MetricProviders.getProviders().add(new MockFailingMetricProvider());
     component.onAdaptrisMessage(message);
     
     assertFalse(mockConsumer.isError);

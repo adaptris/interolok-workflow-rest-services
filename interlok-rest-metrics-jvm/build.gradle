@@ -5,7 +5,6 @@ ext {
 
 dependencies {
 	compile project(':interlok-rest-base')
-	compile project(':interlok-rest-provider')
 	compile ('io.micrometer:micrometer-registry-prometheus:1.6.3')
 	
 	testCompile project(':interlok-rest-base').sourceSets.test.output

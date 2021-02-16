@@ -18,14 +18,13 @@ import com.adaptris.monitor.agent.activity.ProducerActivity;
 import com.adaptris.monitor.agent.activity.ServiceActivity;
 import com.adaptris.monitor.agent.activity.WorkflowActivity;
 import com.adaptris.monitor.agent.jmx.ProfilerEventClientMBean;
-import com.adaptris.rest.MetricBinder;
-import com.adaptris.rest.MetricProviders;
+import com.adaptris.rest.metrics.MetricBinder;
+import com.adaptris.rest.metrics.MetricProviders;
 import com.adaptris.rest.util.JmxMBeanHelper;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.binder.BaseUnits;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -104,7 +103,6 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
       Gauge.builder(metricName, helpValueTags, MetricHelpTypeAndValue::getValue)
           .tags(helpValueTags.getTags())
           .description(helpValueTags.getHelp())
-          .baseUnit(BaseUnits.BUFFERS)
           .register(registry);
     });
     
@@ -140,7 +138,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
 
   @Override
   public void init(Properties config) throws Exception {
-    MetricProviders.PROVIDERS.add(this);
+    MetricProviders.addProvider(this);
   }
 
   @Override

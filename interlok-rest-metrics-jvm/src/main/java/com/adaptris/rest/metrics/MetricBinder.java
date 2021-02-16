@@ -1,4 +1,4 @@
-package com.adaptris.rest;
+package com.adaptris.rest.metrics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
