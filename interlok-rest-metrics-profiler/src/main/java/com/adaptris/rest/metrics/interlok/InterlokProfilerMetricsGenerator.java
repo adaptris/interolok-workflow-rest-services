@@ -1,6 +1,7 @@
 package com.adaptris.rest.metrics.interlok;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -86,8 +87,8 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     }
     
     Map<String, MetricHelpTypeAndValue> profilingEvents = new HashMap<>();
-    ActivityMap eventActivityMap = this.getProfilerEventClient().getEventActivityMap();
-    while(eventActivityMap != null) {
+    List<ActivityMap> eventActivityMaps = this.getProfilerEventClient().getEventActivityMaps();
+    for(ActivityMap eventActivityMap : eventActivityMaps) {
       eventActivityMap.getAdapters().forEach( (adapterId, adapterActivity) -> {
         ((AdapterActivity) adapterActivity).getChannels().forEach( (channelId, channelActivity) -> {
           ((ChannelActivity) channelActivity).getWorkflows().forEach( ( workflowId, workflowActivity) -> {
@@ -95,8 +96,6 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
           });
         });
       });
-      
-      eventActivityMap = this.getProfilerEventClient().getEventActivityMap();
     }
     
     profilingEvents.forEach( (metricName, helpValueTags) -> {
