@@ -1,12 +1,13 @@
 ext {
-  componentName = 'Interlok/REST Cluster'
+  componentName = 'Interlok Management/REST: Cluster'
+  componentDesc="Internal Cluster management via a REST interface"
   delombokTargetDir = new File("${project.projectDir}/src/main/generated")
 }
 
 dependencies {
 	compile ("com.adaptris:interlok-cluster-manager:$interlokCoreVersion") { changing = true}
 	compile project(':interlok-rest-base')
-	
+
 	testCompile project(':interlok-rest-base').sourceSets.test.output
 }
 
@@ -51,7 +52,7 @@ publishing {
           artifact sourcesJar { classifier "sources" }
           pom.withXml {
             asNode().appendNode("name", componentName)
-            asNode().appendNode("description", "Interloks cluster management restful services")
+            asNode().appendNode("description", componentDesc)
             def properties = asNode().appendNode("properties")
             properties.appendNode("target", "3.8.3+")
             properties.appendNode("tags", "rest,cluster")

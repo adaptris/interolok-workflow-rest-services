@@ -1,5 +1,6 @@
 ext {
-  componentName='Interlok Rest/Prometheus'
+  componentName='Interlok Management/REST: Prometheus'
+  componentDesc="Expose metrics in a OpenTelemetry compliant fashion"
   delombokTargetDir = new File("${project.projectDir}/src/main/generated")
 }
 
@@ -7,7 +8,7 @@ dependencies {
 	compile project(':interlok-rest-base')
 	compile project(':interlok-rest-metrics-jvm')
 	compile ('io.micrometer:micrometer-registry-prometheus:1.6.3')
-	
+
 	testCompile project(':interlok-rest-base').sourceSets.test.output
 }
 
@@ -52,7 +53,7 @@ publishing {
           artifact sourcesJar { classifier "sources" }
           pom.withXml {
             asNode().appendNode("name", componentName)
-            asNode().appendNode("description", "Prometheus metric scraping endpoint")
+            asNode().appendNode("description", componentDesc)
             def properties = asNode().appendNode("properties")
             properties.appendNode("target", "3.8.3+")
             properties.appendNode("tags", "rest")

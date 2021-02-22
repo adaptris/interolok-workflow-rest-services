@@ -1,5 +1,6 @@
 ext {
-  componentName='Interlok Rest/MetricsProfiler'
+  componentName='Interlok Management/REST: Interlok Metrics'
+  componentDesc="Collecting internal metrics for exposure"
   delombokTargetDir = new File("${project.projectDir}/src/main/generated")
 }
 
@@ -7,7 +8,7 @@ dependencies {
 	compile project(':interlok-rest-base')
 	compile project(':interlok-rest-metrics-jvm')
 	compile ('io.micrometer:micrometer-registry-prometheus:1.6.3')
-	
+
 	testCompile project(':interlok-rest-base').sourceSets.test.output
 }
 
@@ -52,7 +53,7 @@ publishing {
           artifact sourcesJar { classifier "sources" }
           pom.withXml {
             asNode().appendNode("name", componentName)
-            asNode().appendNode("description", "Interlok profiling metrics")
+            asNode().appendNode("description", componentDesc)
             def properties = asNode().appendNode("properties")
             properties.appendNode("target", "4.0.0+")
             properties.appendNode("tags", "rest,profiler,metrics")
