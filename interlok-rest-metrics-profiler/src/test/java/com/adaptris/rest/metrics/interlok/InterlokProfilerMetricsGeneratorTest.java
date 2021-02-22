@@ -6,6 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,10 +51,11 @@ public class InterlokProfilerMetricsGeneratorTest {
     component.setJmxMBeanHelper(mockJmxHelper);
     
     activityMap = buildActivityMap();
+    List<ActivityMap> list = new ArrayList<>();
+    list.add(activityMap);
     
-    when(mockMBean.getEventActivityMap())
-        .thenReturn(activityMap)
-        .thenReturn(null);
+    when(mockMBean.getEventActivityMaps())
+        .thenReturn(list);
     
     component.init(null);
     component.start();
@@ -64,8 +69,8 @@ public class InterlokProfilerMetricsGeneratorTest {
 
   @Test
   public void testNoMetrics() throws Exception {
-    when(mockMBean.getEventActivityMap())
-        .thenReturn(null);
+    when(mockMBean.getEventActivityMaps())
+        .thenReturn(Collections.emptyList());
     
     component.bindTo(meterRegistry);
     assertEquals(0, meterRegistry.getMeters().size());
@@ -95,11 +100,13 @@ public class InterlokProfilerMetricsGeneratorTest {
   
   @Test
   public void testMultipleMetricsReturns() throws Exception {
-    when(mockMBean.getEventActivityMap())
-        .thenReturn(activityMap)
-        .thenReturn(activityMap)
-        .thenReturn(activityMap)
-        .thenReturn(null);
+    List<ActivityMap> list = new ArrayList<>();
+    list.add(activityMap);
+    list.add(activityMap);
+    list.add(activityMap);
+    
+    when(mockMBean.getEventActivityMaps())
+        .thenReturn(list);
     
     component.bindTo(meterRegistry);
     assertTrue(meterRegistry.getMeters().size() > 0);
