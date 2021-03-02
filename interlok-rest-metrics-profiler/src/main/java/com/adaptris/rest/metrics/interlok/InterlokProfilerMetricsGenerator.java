@@ -99,7 +99,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     }
     
     profilingEvents.forEach( (metricName, helpValueTags) -> {
-      Gauge.builder(metricName, helpValueTags, MetricHelpTypeAndValue::getValue)
+      Gauge.builder(helpValueTags.getMetricName(), helpValueTags, MetricHelpTypeAndValue::getValue)
           .tags(helpValueTags.getTags())
           .description(helpValueTags.getHelp())
           .register(registry);
@@ -118,6 +118,10 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
   static class MetricHelpTypeAndValue {
     @Getter
     @Setter
+    private String metricName;
+    
+    @Getter
+    @Setter
     private String help;
     
     @Getter
@@ -128,10 +132,11 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     @Setter
     private Tags tags;
     
-    public MetricHelpTypeAndValue(String help, Double value, Tags tags) {
-      this.setHelp(help);
-      this.setValue(value);
-      this.setTags(tags);
+    public MetricHelpTypeAndValue(String metricName, String help, Double value, Tags tags) {
+      setMetricName(metricName);
+      setHelp(help);
+      setValue(value);
+      setTags(tags);
     }
   }
 
