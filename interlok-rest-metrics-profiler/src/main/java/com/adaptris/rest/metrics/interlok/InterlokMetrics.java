@@ -11,7 +11,7 @@ public enum InterlokMetrics {
   WORKFLOW_MESSAGE_COUNT_METRIC ("workflow.count") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddTotalValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddTotalValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -21,7 +21,7 @@ public enum InterlokMetrics {
   WORKFLOW_MESSAGE_FAIL_COUNT_METRIC ("workflow.fail.count") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddTotalValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddTotalValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -31,7 +31,7 @@ public enum InterlokMetrics {
   WORKFLOW_AVG_TIME_NANOS_METRIC ("workflow.avgnanos") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -41,7 +41,7 @@ public enum InterlokMetrics {
   WORKFLOW_AVG_TIME_MILLIS_METRIC ("workflow.avgmillis") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -51,7 +51,7 @@ public enum InterlokMetrics {
   SERVICE_AVG_TIME_NANOS_METRIC ("service.avgnanos") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -61,7 +61,7 @@ public enum InterlokMetrics {
   SERVICE_AVG_TIME_MILLIS_METRIC ("service.avgmillis") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -71,7 +71,7 @@ public enum InterlokMetrics {
   PRODUCER_AVG_TIME_NANOS_METRIC ("producer.avgnanos") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -81,7 +81,7 @@ public enum InterlokMetrics {
   PRODUCER_AVG_TIME_MILLIS_METRIC ("producer.avgmillis") {
     @Override
     public void addMetric(String workflowId, String activityId, Double value, Map<String, MetricHelpTypeAndValue> metricMap) {
-      this.calculateAndAddAvgValue(getMetricName(), metricMap, value, createMetricTags(workflowId, activityId));
+      this.calculateAndAddAvgValue(getMetricName(), workflowId, activityId, metricMap, value, createMetricTags(workflowId, activityId));
     }
 
     @Override
@@ -118,19 +118,19 @@ public enum InterlokMetrics {
     return tags;
   }
   
-  public void calculateAndAddAvgValue(String metricName, Map<String, MetricHelpTypeAndValue> metricMap, Double newValue, Tags tags) {
-    Optional<MetricHelpTypeAndValue> metricHelpTypeValue = Optional.ofNullable(metricMap.get(metricName));
+  public void calculateAndAddAvgValue(String metricName, String workflowId, String activityId, Map<String, MetricHelpTypeAndValue> metricMap, Double newValue, Tags tags) {
+    Optional<MetricHelpTypeAndValue> metricHelpTypeValue = Optional.ofNullable(metricMap.get(metricName + workflowId + activityId));
     metricHelpTypeValue.ifPresent( oldMetricHelpTypeValue -> {
       oldMetricHelpTypeValue.setValue((newValue + oldMetricHelpTypeValue.getValue()) / 2);
     });        
-    metricMap.put(metricName, metricHelpTypeValue.isPresent() ? metricHelpTypeValue.get() : metricHelpTypeValue.orElseGet(() -> new MetricHelpTypeAndValue(getHelp(), newValue, tags)));
+    metricMap.put(metricName + workflowId + activityId, metricHelpTypeValue.isPresent() ? metricHelpTypeValue.get() : metricHelpTypeValue.orElseGet(() -> new MetricHelpTypeAndValue(metricName, getHelp(), newValue, tags)));
   }
   
-  public void calculateAndAddTotalValue(String metricName, Map<String, MetricHelpTypeAndValue> metricMap, Double newValue, Tags tags) {
-    Optional<MetricHelpTypeAndValue> metricHelpTypeValue = Optional.ofNullable(metricMap.get(metricName));
+  public void calculateAndAddTotalValue(String metricName, String workflowId, String activityId, Map<String, MetricHelpTypeAndValue> metricMap, Double newValue, Tags tags) {
+    Optional<MetricHelpTypeAndValue> metricHelpTypeValue = Optional.ofNullable(metricMap.get(metricName + workflowId + activityId));
     metricHelpTypeValue.ifPresent( oldMetricHelpTypeValue -> {
       oldMetricHelpTypeValue.setValue(newValue + oldMetricHelpTypeValue.getValue());
     });        
-    metricMap.put(metricName, metricHelpTypeValue.isPresent() ? metricHelpTypeValue.get() : metricHelpTypeValue.orElseGet(() -> new MetricHelpTypeAndValue(getHelp(), newValue, tags)));
+    metricMap.put(metricName + workflowId + activityId, metricHelpTypeValue.isPresent() ? metricHelpTypeValue.get() : metricHelpTypeValue.orElseGet(() -> new MetricHelpTypeAndValue(metricName, getHelp(), newValue, tags)));
   }
 }

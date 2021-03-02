@@ -1,6 +1,7 @@
 package com.adaptris.rest.metrics.interlok;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -99,6 +100,12 @@ public class InterlokProfilerMetricsGeneratorTest {
   }
   
   @Test
+  public void testMultipleWorkflowMetrics() throws Exception {
+    component.bindTo(meterRegistry);
+    assertTrue(meterRegistry.getMeters().size() > 0);
+  }
+  
+  @Test
   public void testMultipleMetricsReturns() throws Exception {
     List<ActivityMap> list = new ArrayList<>();
     list.add(activityMap);
@@ -109,7 +116,16 @@ public class InterlokProfilerMetricsGeneratorTest {
         .thenReturn(list);
     
     component.bindTo(meterRegistry);
-    assertTrue(meterRegistry.getMeters().size() > 0);
+    
+    assertNotNull(
+        meterRegistry.find("workflow.count")
+            .tag("workflow", "workflow")
+            .gauge());
+    
+    assertNotNull(
+        meterRegistry.find("workflow.count")
+            .tag("workflow", "workflow2")
+            .gauge());
   }
   
   private ActivityMap buildActivityMap() {
@@ -121,6 +137,8 @@ public class InterlokProfilerMetricsGeneratorTest {
     channel.setUniqueId("channel");
     WorkflowActivity workflow = new WorkflowActivity();
     workflow.setUniqueId("workflow");
+    WorkflowActivity workflow2 = new WorkflowActivity();
+    workflow2.setUniqueId("workflow2");
     ProducerActivity producer = new ProducerActivity();
     producer.setUniqueId("producer");
     ConsumerActivity consumer = new ConsumerActivity();
@@ -137,6 +155,7 @@ public class InterlokProfilerMetricsGeneratorTest {
     workflow.getServices().put(service.getUniqueId(), service);
     
     channel.getWorkflows().put(workflow.getUniqueId(), workflow);
+    channel.getWorkflows().put(workflow2.getUniqueId(), workflow2);
     adapter.getChannels().put(channel.getUniqueId(), channel);
     
     map.getAdapters().put(adapter.getUniqueId(), adapter);
