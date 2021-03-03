@@ -10,6 +10,7 @@ plugins {
 ext {
   interlokCoreVersion = project.findProperty('interlokCoreVersion') ?: '3.12-SNAPSHOT'
   releaseVersion = project.findProperty('releaseVersion') ?: '3.12-SNAPSHOT'
+  interlokMonitorAgentVersion = project.findProperty('interlokMonitorAgentVersion') ?: interlokCoreVersion
   nexusBaseUrl = project.findProperty('nexusBaseUrl') ?: 'https://nexus.adaptris.net/nexus'
   mavenPublishUrl = project.findProperty('mavenPublishUrl') ?: nexusBaseUrl + '/content/repositories/snapshots'
   javadocsBaseUrl = nexusBaseUrl + "/content/sites/javadocs/com/adaptris"
@@ -142,7 +143,7 @@ subprojects {
 	compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion")
 	compile ("com.adaptris:interlok-client:$interlokCoreVersion")
 
-	compile "com.adaptris:interlok-monitor-agent:$interlokCoreVersion"
+	compile "com.adaptris:interlok-monitor-agent:$interlokMonitorAgentVersion"
 
 	annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
 	umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
