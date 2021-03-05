@@ -43,6 +43,8 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
       
       getConsumer().doResponse(message, message);
       success.accept(message);
+      
+      prometheusRegistry.clear();
     } catch (Exception ex) {
       getConsumer().doErrorResponse(message, ex, ERROR_DEFAULT);
       failure.accept(message);
