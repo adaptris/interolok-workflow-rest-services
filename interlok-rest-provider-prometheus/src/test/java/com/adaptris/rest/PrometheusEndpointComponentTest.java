@@ -26,12 +26,14 @@ public class PrometheusEndpointComponentTest {
 
     component = new PrometheusEndpointComponent();
     component.setConsumer(mockConsumer);
-
+    component.start();
     message = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
 
   @After
   public void tearDown() throws Exception {
+    component.stop();
+    component.destroy();
 
   }
 
