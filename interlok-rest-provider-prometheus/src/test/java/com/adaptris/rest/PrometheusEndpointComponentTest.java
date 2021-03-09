@@ -26,7 +26,6 @@ public class PrometheusEndpointComponentTest {
 
     component = new PrometheusEndpointComponent();
     component.setConsumer(mockConsumer);
-    component.start();
     message = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
 
@@ -39,6 +38,8 @@ public class PrometheusEndpointComponentTest {
 
   @Test
   public void testNoMetrics() throws Exception {
+    component.start();
+
     component.onAdaptrisMessage(message);
 
     assertFalse(mockConsumer.isError);
@@ -49,7 +50,7 @@ public class PrometheusEndpointComponentTest {
   public void testMetrics() throws Exception {
     MetricProviders.getProviders().clear();
     MetricProviders.getProviders().add(new MockMetricProvider());
-
+    component.start();
     component.onAdaptrisMessage(message);
 
     assertFalse(mockConsumer.isError);
@@ -60,6 +61,7 @@ public class PrometheusEndpointComponentTest {
   public void testErrorResponseOnMetricGenerationException() throws Exception {
     MetricProviders.getProviders().clear();
     MetricProviders.getProviders().add(new MockFailingMetricProvider());
+    component.start();
     component.onAdaptrisMessage(message);
 
     assertFalse(mockConsumer.isError);
@@ -68,6 +70,7 @@ public class PrometheusEndpointComponentTest {
 
   @Test
   public void testErrorResponse() throws Exception {
+    component.start();
     component.onAdaptrisMessage(null);
 
     assertTrue(mockConsumer.isError);
