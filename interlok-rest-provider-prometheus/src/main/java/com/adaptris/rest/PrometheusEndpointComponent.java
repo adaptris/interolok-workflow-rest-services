@@ -30,19 +30,19 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
 
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, Consumer<AdaptrisMessage> success, Consumer<AdaptrisMessage> failure) {
-    PrometheusMeterRegistry prometheusRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    PrometheusMeterRegistry prometheusRegistry =
+        new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     prometheusRegistry.config().meterFilter(new PrometheusRenameFilter());
-
     try {
-      MetricProviders.getProviders().forEach( provider -> {
+      MetricProviders.getProviders().forEach(provider -> {
         try {
           provider.bindTo(prometheusRegistry);
         } catch (Exception e) {
+          // This is wrong, because if we've failed to bind, then we need to try and bind again.
           log.warn("Metric gathering failed, will try again on next request.");
           exceptionLogging(ADDITIONAL_DEBUG, "Stack trace from metric gathering failure :", e);
         }
       });
-
       message.setContent(prometheusRegistry.scrape(), message.getContentEncoding());
 
       getConsumer().doResponse(message, message);
@@ -50,6 +50,9 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
     } catch (Exception ex) {
       getConsumer().doErrorResponse(message, ex, ERROR_DEFAULT);
       failure.accept(message);
+    } finally {
+      prometheusRegistry.clear();
+      prometheusRegistry.close();
     }
   }
 
