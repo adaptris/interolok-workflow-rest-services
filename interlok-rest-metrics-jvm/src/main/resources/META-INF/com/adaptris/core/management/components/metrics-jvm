@@ -1,0 +1,1 @@
+class=com.adaptris.rest.metrics.jvm.JvmMetricsGenerator
