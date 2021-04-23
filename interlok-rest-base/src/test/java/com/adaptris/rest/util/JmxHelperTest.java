@@ -88,5 +88,20 @@ public class JmxHelperTest {
       server.unregisterMBean(ObjectName.getInstance(objectRef));
     }
   }
+  
+  @Test
+  public void testGetMBeanNames() throws Exception {
+    JmxMBeanHelper helper = new JmxMBeanHelper();
+    MBeanServer server = helper.mBeanServer();
+    Dummy dummy = new Dummy(0);
+    String objectRef = String.format(DUMMY_MBEAN_BASE, dummy.getUniqueId());
+    try {
+      server.registerMBean(dummy, ObjectName.getInstance(objectRef));
+      Set<ObjectName> set = helper.getMBeanNames(MY_SEARCH_CRITERIA);
+      assertEquals(1, set.size());
+    } finally {
+      server.unregisterMBean(ObjectName.getInstance(objectRef));
+    }
+  }
 
 }
