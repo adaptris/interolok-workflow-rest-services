@@ -31,7 +31,11 @@ public class JmxMBeanHelper {
   }
 
   public <T> T proxyMBean(String objectNameString, Class<T> type) throws MalformedObjectNameException {
-    return JMX.newMBeanProxy(mBeanServer(), new ObjectName(objectNameString), type, true);
+    return proxyMBean(new ObjectName(objectNameString), type);
+  }
+  
+  public <T> T proxyMBean(ObjectName objectName, Class<T> type) {
+    return JMX.newMBeanProxy(mBeanServer(), objectName, type, true);
   }
 
   @SuppressWarnings("unchecked")
@@ -41,6 +45,10 @@ public class JmxMBeanHelper {
 
   public Set<ObjectInstance> getMBeans(String objectNameQuery) throws Exception {
     return mBeanServer().queryMBeans(new ObjectName(objectNameQuery), null);
+  }
+  
+  public Set<ObjectName> getMBeanNames(String objectNameQuery) throws Exception {
+    return mBeanServer().queryNames(new ObjectName(objectNameQuery), null);
   }
 
   @Synchronized("mbeanLock")

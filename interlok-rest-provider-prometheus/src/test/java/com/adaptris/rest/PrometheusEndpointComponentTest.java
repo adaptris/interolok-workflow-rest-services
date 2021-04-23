@@ -2,6 +2,9 @@ package com.adaptris.rest;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Properties;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,6 +29,7 @@ public class PrometheusEndpointComponentTest {
 
     component = new PrometheusEndpointComponent();
     component.setConsumer(mockConsumer);
+    component.init(new Properties());
     component.start();
     message = DefaultMessageFactory.getDefaultInstance().newMessage();
   }
