@@ -41,4 +41,16 @@ public class JvmMetricsGeneratorTest {
       assertNotNull(m.measure().iterator().next().getValue());
   }
   
+  @Test
+  public void testBindMetricsMultipleTimes() throws Exception {
+    mockRegistry = new SimpleMeterRegistry();
+    generator.bindTo(mockRegistry);
+    generator.bindTo(mockRegistry);
+    generator.bindTo(mockRegistry);
+    
+    assertTrue(mockRegistry.getMeters().size() > 0);
+    for(Meter m : mockRegistry.getMeters())
+      assertNotNull(m.measure().iterator().next().getValue());
+  }
+  
 }
