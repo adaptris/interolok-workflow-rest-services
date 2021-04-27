@@ -8,8 +8,8 @@ plugins {
 }
 
 ext {
-  interlokCoreVersion = project.findProperty('interlokCoreVersion') ?: '4.0-SNAPSHOT'
-  releaseVersion = project.findProperty('releaseVersion') ?: '4.0-SNAPSHOT'
+  interlokCoreVersion = project.findProperty('interlokCoreVersion') ?: '3.12-SNAPSHOT'
+  releaseVersion = project.findProperty('releaseVersion') ?: '3.12-SNAPSHOT'
   nexusBaseUrl = project.findProperty('nexusBaseUrl') ?: 'https://nexus.adaptris.net/nexus'
   mavenPublishUrl = project.findProperty('mavenPublishUrl') ?: nexusBaseUrl + '/content/repositories/snapshots'
   javadocsBaseUrl = nexusBaseUrl + "/content/sites/javadocs/com/adaptris"
@@ -95,8 +95,8 @@ subprojects {
   apply plugin: 'com.github.spotbugs'
   apply plugin: 'org.owasp.dependencycheck'
 
-  sourceCompatibility = JavaVersion.VERSION_11
-  targetCompatibility = JavaVersion.VERSION_11
+  sourceCompatibility = JavaVersion.VERSION_1_8
+  targetCompatibility = JavaVersion.VERSION_1_8
   group   = 'com.adaptris'
   version = releaseVersion
   def versionDir = "$buildDir/version"
@@ -173,7 +173,7 @@ subprojects {
       options.linksOffline(interlokCommonJavadocs, offlineJavadocPackageDir.getCanonicalPath() + "/interlok-common-$interlokCoreVersion-javadoc.jar")
       taglets = ["com.adaptris.taglet.ConfigTaglet", "com.adaptris.taglet.LicenseTaglet"]
       options.addStringOption "tagletpath", configurations.javadoc.asPath
-	    options.addBooleanOption "-no-module-directories", true
+	    // options.addBooleanOption "-no-module-directories", true
     }
   }
 
