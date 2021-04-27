@@ -5,10 +5,8 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import javax.management.ObjectName;
@@ -19,7 +17,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import com.adaptris.monitor.agent.activity.ActivityMap;
 import com.adaptris.profiler.jmx.TimedThroughputMetric;
 import com.adaptris.profiler.jmx.TimedThroughputMetricMBean;
 import com.adaptris.rest.util.JmxMBeanHelper;
@@ -35,8 +32,6 @@ public class InterlokProfilerMetricsGeneratorTest {
   
   private TimedThroughputMetric metricMbeanOne, metricMbeanTwo;
   
-  private ActivityMap activityMap;
-
   private PrometheusMeterRegistry meterRegistry;
 
   @Before
@@ -67,9 +62,6 @@ public class InterlokProfilerMetricsGeneratorTest {
 
     component = new InterlokProfilerMetricsGenerator();
     component.setJmxMBeanHelper(mockJmxHelper);
-
-    List<ActivityMap> list = new ArrayList<>();
-    list.add(activityMap);
 
     component.init(null);
     component.start();

@@ -139,13 +139,11 @@ subprojects {
 
   // In this section you declare the dependencies for your production and test code
   dependencies {
-	compile ("com.adaptris:interlok-core:$interlokCoreVersion")
-	compile ("com.adaptris:interlok-common:$interlokCoreVersion")
+	compile ("com.adaptris:interlok-core:$interlokCoreVersion") {changing = true}
+	compile ("com.adaptris:interlok-common:$interlokCoreVersion") {changing = true}
 
-	compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion")
-	compile ("com.adaptris:interlok-client:$interlokCoreVersion")
-
-	compile "com.adaptris:interlok-monitor-agent:$interlokCoreVersion"
+	compile ("com.adaptris:interlok-client-jmx:$interlokCoreVersion") {changing = true}
+	compile ("com.adaptris:interlok-client:$interlokCoreVersion") {changing = true}
 
 	annotationProcessor ("com.adaptris:interlok-core-apt:$interlokCoreVersion")
 	umlDoclet("nl.talsmasoftware:umldoclet:1.1.4")
