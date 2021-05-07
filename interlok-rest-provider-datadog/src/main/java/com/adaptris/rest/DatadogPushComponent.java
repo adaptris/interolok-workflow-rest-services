@@ -2,8 +2,12 @@ package com.adaptris.rest;
 
 import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.adaptris.core.management.MgmtComponentImpl;
 import com.adaptris.rest.metrics.MetricProviders;
@@ -29,12 +33,10 @@ public class DatadogPushComponent extends MgmtComponentImpl {
   
   private static final String DATADOG_PUSH_TIMER_SECONDS_KEY = "datadogPushTimerSeconds";
 
-  private static final String THREAD_NAME = "DatadogPushThread";
-
   private static final int PUSH_TIMER_SECONDS = 10;
 
-  private volatile boolean running;
-
+  private ScheduledExecutorService executor;
+  
   @Getter
   @Setter
   private DatadogMeterRegistry datadogRegistry;
@@ -54,7 +56,7 @@ public class DatadogPushComponent extends MgmtComponentImpl {
       
       @Override
       public String uri() {
-        return config.containsKey(DATADOG_URL_KEY) ? config.getProperty(DATADOG_URL_KEY) : DATADOG_URL_DEFAULT;
+        return StringUtils.defaultIfBlank(config.getProperty(DATADOG_URL_KEY), DATADOG_URL_DEFAULT);
       }
 
       @Override
@@ -67,31 +69,25 @@ public class DatadogPushComponent extends MgmtComponentImpl {
 
   @Override
   public void start() throws Exception {
-    running = true;
-    new Thread(() -> {
-      while (running) {
-        MetricProviders.getProviders().forEach(provider -> {
-          try {
-            provider.bindTo(datadogRegistry);
-          } catch (Exception e) {
-            log.warn("Metric gathering failed, will try again on next request.");
-            exceptionLogging(ADDITIONAL_DEBUG, "Stack trace from metric gathering failure :", e);
-          }
-        });
-
+    executor = Executors.newSingleThreadScheduledExecutor();
+    
+    Runnable runnableTask = () -> {
+      MetricProviders.getProviders().forEach(provider -> {
         try {
-          Thread.sleep(PUSH_TIMER_SECONDS * 1000);
-        } catch (InterruptedException e) {
-          log.warn("{} interrupted, stopping thread.", THREAD_NAME);
-          running = false;
+          provider.bindTo(datadogRegistry);
+        } catch (Exception e) {
+          log.warn("Metric gathering failed, will try again on next request.");
+          exceptionLogging(ADDITIONAL_DEBUG, "Stack trace from metric gathering failure :", e);
         }
-      }
-    }, THREAD_NAME).start();
+      });
+    };
+
+    executor.scheduleAtFixedRate(runnableTask, 0, PUSH_TIMER_SECONDS * 1000, TimeUnit.MILLISECONDS);
   }
 
   @Override
   public void stop() throws Exception {
-    running = false;
+    executor.shutdown();
     datadogRegistry.close();
   }
 
@@ -100,9 +96,9 @@ public class DatadogPushComponent extends MgmtComponentImpl {
   }
 
   int pushTimerSeconds(Properties config) {
-    return config.containsKey(DATADOG_PUSH_TIMER_SECONDS_KEY) ?
-          Integer.parseInt(config.getProperty(DATADOG_PUSH_TIMER_SECONDS_KEY)) :
-          PUSH_TIMER_SECONDS;
+    return config.containsKey(DATADOG_PUSH_TIMER_SECONDS_KEY) ? 
+        Integer.parseInt(config.getProperty(DATADOG_PUSH_TIMER_SECONDS_KEY)) :
+        PUSH_TIMER_SECONDS;
   }
   
   // sad, this is for coverage.
