@@ -82,7 +82,7 @@ public class DatadogPushComponent extends MgmtComponentImpl {
       });
     };
 
-    executor.scheduleAtFixedRate(runnableTask, 0, PUSH_TIMER_SECONDS * 1000, TimeUnit.MILLISECONDS);
+    executor.scheduleAtFixedRate(runnableTask, 0, PUSH_TIMER_SECONDS, TimeUnit.SECONDS);
   }
 
   @Override
