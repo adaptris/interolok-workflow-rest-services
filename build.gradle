@@ -152,7 +152,7 @@ subprojects {
 	testCompile ("com.adaptris:interlok-stubs:$interlokCoreVersion") { changing=true }
 	testCompile ("org.mockito:mockito-core:$mockitoVersion")
 	testCompile ("org.mockito:mockito-inline:$mockitoVersion")
-	testCompile ("org.awaitility:awaitility:4.0.3")
+	testCompile ("org.awaitility:awaitility:4.1.0")
 	// INTERLOK-3233 we still need log4j since we're doing MDC stuffs.
 	testCompile ("org.apache.logging.log4j:log4j-core:$log4j2Version")
 	testCompile ("org.apache.logging.log4j:log4j-api:$log4j2Version")
