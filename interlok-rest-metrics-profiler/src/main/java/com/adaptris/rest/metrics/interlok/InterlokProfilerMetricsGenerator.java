@@ -39,6 +39,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
   private static final String METRIC_AVG_NANOS = ".avgnanos";
   private static final String COMPONENT_TYPE_PROPERTY = "componentType";
   private static final String COMPONENT_TAG = "component";
+  private static final String WORKFLOW_TAG = "workflow";
   
   private Map<String, Meter> meterMap;
     
@@ -56,14 +57,15 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     Set<ObjectName> queryMBeans = getJmxMBeanHelper().getMBeanNames(PROFILER_OBJECT_NAME);
     queryMBeans.forEach( object -> {
       TimedThroughputMetricMBean mBean = getJmxMBeanHelper().proxyMBean(object, TimedThroughputMetricMBean.class);
-      
-      Counter countCounter = getOrCreateCountMeter(METRIC_COUNT + mBean.getUniqueId(), object, mBean, registry);
-      countCounter.increment(mBean.getMessageCount() - countCounter.count());
-      
-      Counter failCountCounter = getOrCreateFailedCountMeter(METRIC_FAIL_COUNT + mBean.getUniqueId(), object, mBean, registry);
-      failCountCounter.increment(mBean.getFailedMessageCount() - failCountCounter.count());
-      
-      getOrCreateNanosMeter(METRIC_AVG_NANOS + mBean.getUniqueId(), object, mBean, registry);
+      if(mBean.getWorkflowId() != null) {
+        Counter countCounter = getOrCreateCountMeter(METRIC_COUNT + mBean.getUniqueId(), object, mBean, registry);
+        countCounter.increment(mBean.getMessageCount() - countCounter.count());
+        
+        Counter failCountCounter = getOrCreateFailedCountMeter(METRIC_FAIL_COUNT + mBean.getUniqueId(), object, mBean, registry);
+        failCountCounter.increment(mBean.getFailedMessageCount() - failCountCounter.count());
+        
+        getOrCreateNanosMeter(METRIC_AVG_NANOS + mBean.getUniqueId(), object, mBean, registry);
+      }
     });
   }
   
@@ -74,10 +76,9 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
                 () -> {
                     return mBean.getAverageNanoseconds();
                 })
-                .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()))
+                .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
                 .description(AVG_NANOS_HELP)
                 .register(registry);
-      
       meterMap.put(key, meter);
     }
     
@@ -89,7 +90,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     if(meter == null) {
       meter = Counter.builder(object.getKeyProperty(COMPONENT_TYPE_PROPERTY) + METRIC_COUNT)
                   .description(COUNT_HELP)
-                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()))
+                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
                   .register(registry);
       
       meterMap.put(key, meter);
@@ -103,7 +104,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     if(meter == null) {
       meter = Counter.builder(object.getKeyProperty(COMPONENT_TYPE_PROPERTY) + METRIC_FAIL_COUNT)
                   .description(FAIL_COUNT_HELP)
-                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()))
+                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
                   .register(registry);
       
       meterMap.put(key, meter);

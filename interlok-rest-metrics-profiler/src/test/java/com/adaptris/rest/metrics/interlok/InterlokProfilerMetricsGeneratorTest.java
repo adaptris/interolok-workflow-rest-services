@@ -30,7 +30,7 @@ public class InterlokProfilerMetricsGeneratorTest {
 
   @Mock private JmxMBeanHelper mockJmxHelper;
   
-  private TimedThroughputMetric metricMbeanOne, metricMbeanTwo;
+  private TimedThroughputMetric metricMbeanOne, metricMbeanTwo, metricMbeanThree;
   
   private PrometheusMeterRegistry meterRegistry;
 
@@ -40,13 +40,19 @@ public class InterlokProfilerMetricsGeneratorTest {
 
     metricMbeanOne = new TimedThroughputMetric();
     metricMbeanOne.setUniqueId("workflow");
+    metricMbeanOne.setWorkflowId("workflowid");
     
     metricMbeanTwo = new TimedThroughputMetric();
     metricMbeanTwo.setUniqueId("producer");
+    metricMbeanTwo.setWorkflowId("workflowid");
+    
+    metricMbeanThree = new TimedThroughputMetric();
+    metricMbeanThree.setUniqueId("workflow");
     
     Set<ObjectName> metricSet = new HashSet<>();
     ObjectName o1 = new ObjectName("com.adaptris:type=profiler,componentType=workflow,id=1");
     ObjectName o2 = new ObjectName("com.adaptris:type=profiler,componentType=producer,id=2");
+    
     metricSet.add(o1);
     metricSet.add(o2);
     
@@ -77,6 +83,22 @@ public class InterlokProfilerMetricsGeneratorTest {
   public void testNoMetrics() throws Exception {
     when(mockJmxHelper.getMBeanNames(anyString()))
         .thenReturn(Collections.emptySet());
+    
+    component.bindTo(meterRegistry);
+    assertEquals(0, meterRegistry.getMeters().size());
+  }
+  
+  @Test
+  public void testMetricsWithoutWorkflows() throws Exception {
+    Set<ObjectName> metricSet = new HashSet<>();
+    ObjectName o3 = new ObjectName("com.adaptris:type=profiler,componentType=producer,id=2");
+    metricSet.add(o3);
+    
+    when(mockJmxHelper.proxyMBean(o3, TimedThroughputMetricMBean.class))
+        .thenReturn(metricMbeanThree);
+    
+    when(mockJmxHelper.getMBeanNames(anyString()))
+        .thenReturn(metricSet);
     
     component.bindTo(meterRegistry);
     assertEquals(0, meterRegistry.getMeters().size());
