@@ -57,6 +57,7 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
     Set<ObjectName> queryMBeans = getJmxMBeanHelper().getMBeanNames(PROFILER_OBJECT_NAME);
     queryMBeans.forEach( object -> {
       TimedThroughputMetricMBean mBean = getJmxMBeanHelper().proxyMBean(object, TimedThroughputMetricMBean.class);
+      // If no workflow ID, then this may be an event or the base workflow rest HTTP acceptor service so ignore.
       if(mBean.getWorkflowId() != null) {
         Counter countCounter = getOrCreateCountMeter(METRIC_COUNT + mBean.getUniqueId(), object, mBean, registry);
         countCounter.increment(mBean.getMessageCount() - countCounter.count());
