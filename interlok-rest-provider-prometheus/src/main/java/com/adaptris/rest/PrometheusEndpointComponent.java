@@ -1,6 +1,8 @@
 package com.adaptris.rest;
 
 import static com.adaptris.rest.WorkflowServicesConsumer.ERROR_DEFAULT;
+
+import java.util.Properties;
 import java.util.function.Consumer;
 import org.apache.commons.lang3.BooleanUtils;
 import com.adaptris.core.AdaptrisMessage;
@@ -28,11 +30,21 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
   @Getter(AccessLevel.PROTECTED)
   private transient final String acceptedFilter = ACCEPTED_FILTER;
 
+  private PrometheusMeterRegistry prometheusRegistry;
+  
+  @Override
+  public void init(Properties config) throws Exception {
+    prometheusRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    prometheusRegistry.config().meterFilter(new PrometheusRenameFilter());
+  }
+  
+  @Override
+  public void stop() throws Exception {
+    prometheusRegistry.close();
+  }
+  
   @Override
   public void onAdaptrisMessage(AdaptrisMessage message, Consumer<AdaptrisMessage> success, Consumer<AdaptrisMessage> failure) {
-    PrometheusMeterRegistry prometheusRegistry =
-        new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    prometheusRegistry.config().meterFilter(new PrometheusRenameFilter());
     try {
       MetricProviders.getProviders().forEach(provider -> {
         try {
@@ -50,9 +62,6 @@ public class PrometheusEndpointComponent  extends AbstractRestfulEndpoint {
     } catch (Exception ex) {
       getConsumer().doErrorResponse(message, ex, ERROR_DEFAULT);
       failure.accept(message);
-    } finally {
-      prometheusRegistry.clear();
-      prometheusRegistry.close();
     }
   }
 

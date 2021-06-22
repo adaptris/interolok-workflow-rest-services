@@ -1,5 +1,5 @@
 ext {
-  componentName='Interlok Management/REST: Prometheus'
+  componentName='Interlok Management/REST: Datadog'
   componentDesc="Expose metrics in a OpenTelemetry compliant fashion"
   delombokTargetDir = new File("${project.projectDir}/src/main/generated")
 }
@@ -7,9 +7,7 @@ ext {
 dependencies {
 	compile project(':interlok-rest-base')
 	compile project(':interlok-rest-metrics-jvm')
-	compile ('io.micrometer:micrometer-registry-prometheus:1.7.0')
-
-	testCompile project(':interlok-rest-base').sourceSets.test.output
+	compile ('io.micrometer:micrometer-registry-datadog:1.7.0')
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
@@ -55,7 +53,7 @@ publishing {
             asNode().appendNode("name", componentName)
             asNode().appendNode("description", componentDesc)
             def properties = asNode().appendNode("properties")
-            properties.appendNode("target", "3.8.3+")
+            properties.appendNode("target", "4.1+")
             properties.appendNode("tags", "rest")
             properties.appendNode("license", "false")
             properties.appendNode("repository", "https://github.com/adaptris/interlok-workflow-rest-services")

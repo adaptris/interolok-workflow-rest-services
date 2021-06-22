@@ -1,9 +1,9 @@
 package com.adaptris.rest.metrics.interlok;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import javax.management.ObjectName;
 
@@ -11,22 +11,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.adaptris.core.management.MgmtComponentImpl;
-import com.adaptris.monitor.agent.activity.ActivityMap;
-import com.adaptris.monitor.agent.activity.AdapterActivity;
-import com.adaptris.monitor.agent.activity.BaseActivity;
-import com.adaptris.monitor.agent.activity.ChannelActivity;
-import com.adaptris.monitor.agent.activity.ProducerActivity;
-import com.adaptris.monitor.agent.activity.ServiceActivity;
-import com.adaptris.monitor.agent.activity.WorkflowActivity;
-import com.adaptris.monitor.agent.jmx.ProfilerEventClientMBean;
+import com.adaptris.profiler.jmx.TimedThroughputMetricMBean;
 import com.adaptris.rest.metrics.MetricBinder;
 import com.adaptris.rest.metrics.MetricProviders;
 import com.adaptris.rest.util.JmxMBeanHelper;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,110 +28,90 @@ public class InterlokProfilerMetricsGenerator extends MgmtComponentImpl implemen
   
   protected transient Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
-  private static final String PROFILER_OBJECT_NAME = "com.adaptris:type=Profiler";
+  private static final String COUNT_HELP = "The number of messages this component has processed.";
+  private static final String FAIL_COUNT_HELP = "The number of failed messages this component has processed.";
+  private static final String AVG_NANOS_HELP = "The average time in nanoseconds this component has takes to process a message.";
   
-  @Getter(AccessLevel.PACKAGE)
-  @Setter(AccessLevel.PACKAGE)
-  private transient JmxMBeanHelper jmxMBeanHelper;
+  private static final String PROFILER_OBJECT_NAME = "com.adaptris:type=Profiler,*";
   
+  private static final String METRIC_COUNT = ".count";
+  private static final String METRIC_FAIL_COUNT = ".fail.count";
+  private static final String METRIC_AVG_NANOS = ".avgnanos";
+  private static final String COMPONENT_TYPE_PROPERTY = "componentType";
+  private static final String COMPONENT_TAG = "component";
+  private static final String WORKFLOW_TAG = "workflow";
+  
+  private Map<String, Meter> meterMap;
+    
   @Getter
   @Setter
-  private ProfilerEventClientMBean profilerEventClient;
+  private JmxMBeanHelper jmxMBeanHelper;
   
   public InterlokProfilerMetricsGenerator() {
-    this.setJmxMBeanHelper(new JmxMBeanHelper());
+    meterMap = new HashMap<>();
+    setJmxMBeanHelper(new JmxMBeanHelper());
   }
   
-  private void addMetrics(WorkflowActivity workflowActivity, BaseActivity activity, Map<String, MetricHelpTypeAndValue> profilingEvents) {
-    if(activity instanceof WorkflowActivity) {
-      WorkflowActivity wActivity = (WorkflowActivity) activity;
-      this.addMetrics(wActivity, wActivity.getProducerActivity(), profilingEvents);
-      wActivity.getServices().forEach( ( serviceId, serviceActivity) -> {
-        this.addMetrics(wActivity, serviceActivity, profilingEvents);
-      });
-      
-      InterlokMetrics.WORKFLOW_MESSAGE_COUNT_METRIC.addMetric(wActivity.getUniqueId(), null, (double) wActivity.getMessageCount(), profilingEvents);
-      InterlokMetrics.WORKFLOW_MESSAGE_FAIL_COUNT_METRIC.addMetric(wActivity.getUniqueId(), null, (double) wActivity.getFailedCount(), profilingEvents);
-      InterlokMetrics.WORKFLOW_AVG_TIME_NANOS_METRIC.addMetric(wActivity.getUniqueId(), null, (double) wActivity.getAvgNsTaken(), profilingEvents);
-      InterlokMetrics.WORKFLOW_AVG_TIME_MILLIS_METRIC.addMetric(wActivity.getUniqueId(), null, (double) wActivity.getAvgMsTaken(), profilingEvents);
-      
-    } else if (activity instanceof ProducerActivity) {
-      ProducerActivity pActivity = (ProducerActivity) activity;
-      
-      InterlokMetrics.PRODUCER_AVG_TIME_NANOS_METRIC.addMetric(workflowActivity.getUniqueId(), pActivity.getUniqueId(), (double) pActivity.getAvgNsTaken(), profilingEvents);
-      InterlokMetrics.PRODUCER_AVG_TIME_MILLIS_METRIC.addMetric(workflowActivity.getUniqueId(), pActivity.getUniqueId(), (double) pActivity.getAvgMsTaken(), profilingEvents);
-      
-    } else if (activity instanceof ServiceActivity) {
-      ServiceActivity sActivity = (ServiceActivity) activity;
-      
-      InterlokMetrics.SERVICE_AVG_TIME_NANOS_METRIC.addMetric(workflowActivity.getUniqueId(), sActivity.getUniqueId(), (double) sActivity.getAvgNsTaken(), profilingEvents);
-      InterlokMetrics.SERVICE_AVG_TIME_MILLIS_METRIC.addMetric(workflowActivity.getUniqueId(), sActivity.getUniqueId(), (double) sActivity.getAvgMsTaken(), profilingEvents);
-      
-      sActivity.getServices().forEach( (serviceId, serviceActivity) -> {
-        this.addMetrics(workflowActivity, serviceActivity, profilingEvents);
-      });
-    }
-  }
   @Override
   public void bindTo(MeterRegistry registry) throws Exception {
-    this.loadProfilerEventClient();
-    
-    if(this.getProfilerEventClient() == null) {
-      return;
-    }
-    
-    Map<String, MetricHelpTypeAndValue> profilingEvents = new HashMap<>();
-    List<ActivityMap> eventActivityMaps = this.getProfilerEventClient().getEventActivityMaps();
-    for(ActivityMap eventActivityMap : eventActivityMaps) {
-      eventActivityMap.getAdapters().forEach( (adapterId, adapterActivity) -> {
-        ((AdapterActivity) adapterActivity).getChannels().forEach( (channelId, channelActivity) -> {
-          ((ChannelActivity) channelActivity).getWorkflows().forEach( ( workflowId, workflowActivity) -> {
-            addMetrics(null, workflowActivity, profilingEvents);
-          });
-        });
-      });
-    }
-    
-    profilingEvents.forEach( (metricName, helpValueTags) -> {
-      Gauge.builder(helpValueTags.getMetricName(), helpValueTags, MetricHelpTypeAndValue::getValue)
-          .tags(helpValueTags.getTags())
-          .description(helpValueTags.getHelp())
-          .register(registry);
+    Set<ObjectName> queryMBeans = getJmxMBeanHelper().getMBeanNames(PROFILER_OBJECT_NAME);
+    queryMBeans.forEach( object -> {
+      TimedThroughputMetricMBean mBean = getJmxMBeanHelper().proxyMBean(object, TimedThroughputMetricMBean.class);
+      // If no workflow ID, then this may be an event or the base workflow rest HTTP acceptor service so ignore.
+      if(mBean.getWorkflowId() != null) {
+        Counter countCounter = getOrCreateCountMeter(METRIC_COUNT + mBean.getUniqueId(), object, mBean, registry);
+        countCounter.increment(mBean.getMessageCount() - countCounter.count());
+        
+        Counter failCountCounter = getOrCreateFailedCountMeter(METRIC_FAIL_COUNT + mBean.getUniqueId(), object, mBean, registry);
+        failCountCounter.increment(mBean.getFailedMessageCount() - failCountCounter.count());
+        
+        getOrCreateNanosMeter(METRIC_AVG_NANOS + mBean.getUniqueId(), object, mBean, registry);
+      }
     });
-    
   }
   
-  private void loadProfilerEventClient() throws Exception {    
-    if(this.getProfilerEventClient() == null) {
-      ProfilerEventClientMBean profilerEventClientMBean = getJmxMBeanHelper().proxyMBean(new ObjectName(PROFILER_OBJECT_NAME).toString(), ProfilerEventClientMBean.class);
-      if(profilerEventClientMBean != null)
-        this.setProfilerEventClient(profilerEventClientMBean);
+  private Gauge getOrCreateNanosMeter(String key, ObjectName object, TimedThroughputMetricMBean mBean, MeterRegistry registry) {
+    Gauge meter = (Gauge) meterMap.get(key);
+    if(meter == null) {
+      meter = Gauge.builder(object.getKeyProperty(COMPONENT_TYPE_PROPERTY) + METRIC_AVG_NANOS, 
+                () -> {
+                    return mBean.getAverageNanoseconds();
+                })
+                .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
+                .description(AVG_NANOS_HELP)
+                .register(registry);
+      meterMap.put(key, meter);
     }
+    
+    return meter;
   }
   
-  static class MetricHelpTypeAndValue {
-    @Getter
-    @Setter
-    private String metricName;
-    
-    @Getter
-    @Setter
-    private String help;
-    
-    @Getter
-    @Setter
-    private Double value;
-    
-    @Getter
-    @Setter
-    private Tags tags;
-    
-    public MetricHelpTypeAndValue(String metricName, String help, Double value, Tags tags) {
-      setMetricName(metricName);
-      setHelp(help);
-      setValue(value);
-      setTags(tags);
+  private Counter getOrCreateCountMeter(String key, ObjectName object, TimedThroughputMetricMBean mBean, MeterRegistry registry) {
+    Counter meter = (Counter) meterMap.get(key);
+    if(meter == null) {
+      meter = Counter.builder(object.getKeyProperty(COMPONENT_TYPE_PROPERTY) + METRIC_COUNT)
+                  .description(COUNT_HELP)
+                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
+                  .register(registry);
+      
+      meterMap.put(key, meter);
     }
+    
+    return meter;
+  }
+  
+  private Counter getOrCreateFailedCountMeter(String key, ObjectName object, TimedThroughputMetricMBean mBean, MeterRegistry registry) {
+    Counter meter = (Counter) meterMap.get(key);
+    if(meter == null) {
+      meter = Counter.builder(object.getKeyProperty(COMPONENT_TYPE_PROPERTY) + METRIC_FAIL_COUNT)
+                  .description(FAIL_COUNT_HELP)
+                  .tags(Tags.of(COMPONENT_TAG, mBean.getUniqueId()).and(WORKFLOW_TAG, mBean.getWorkflowId()))
+                  .register(registry);
+      
+      meterMap.put(key, meter);
+    }
+    
+    return meter;
   }
 
   @Override

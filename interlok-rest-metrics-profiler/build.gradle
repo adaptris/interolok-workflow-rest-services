@@ -7,9 +7,11 @@ ext {
 dependencies {
 	compile project(':interlok-rest-base')
 	compile project(':interlok-rest-metrics-jvm')
-	compile ('io.micrometer:micrometer-registry-prometheus:1.6.4')
+	compile ("com.adaptris:interlok-profiler:$interlokCoreVersion") { changing = true}
 
 	testCompile project(':interlok-rest-base').sourceSets.test.output
+	testCompile ("com.adaptris:interlok-profiler:$interlokCoreVersion") { changing = true}
+	testImplementation ('io.micrometer:micrometer-registry-prometheus:1.7.0')
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
