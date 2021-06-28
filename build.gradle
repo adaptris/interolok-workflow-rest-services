@@ -93,6 +93,12 @@ subprojects {
   def versionDir = "$buildDir/version"
   generateLombokConfig.enabled = false
 
+  // Disable gradle module generation since we probably don't want
+  // xxx.module files in your repository.
+  tasks.withType(GenerateModuleMetadata) {
+    enabled = false
+  }
+
   // In this section you declare where to find the dependencies of your project
   repositories {
     mavenCentral()
